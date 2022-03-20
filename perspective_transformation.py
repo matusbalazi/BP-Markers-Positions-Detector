@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 
 class PerspectiveTransformation:
-    def __init__(self, pImage, pWidth, pHeight, pPoints):
-        self.image = pImage
+    def __init__(self, pImageFilename, pWidth, pHeight, pPoints):
+        self.image = cv2.imread(pImageFilename)
         self.width = pWidth
         self.height = pHeight
         self.points = pPoints
