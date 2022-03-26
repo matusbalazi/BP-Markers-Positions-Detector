@@ -4,19 +4,20 @@ from colorama import Fore, Style
 import cv2
 
 class CircleDetectorWithCV:
-    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize):
+    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles):
         self.image = cv2.imread(pImageFilename)
         #self.image = pImage
         self.minRadius = pMinRadius
         self.maxRadius = pMaxRadius
         self.objSize = pObjSize
+        self.numOfExpectedCircles = pNumOfExpectedCircles
         self.imageCopy = 0
         print("Min radius: ", pMinRadius)
         print("Max radius: ", pMaxRadius)
         self.distance = distance_calculator.DistanceCalculator(self.objSize)
         self.corners = corner_detector.CornerDetector(self.image)
 
-    def detectCircles(self):
+    def detectCircles(self, pMinRadius, pMaxRadius):
         self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         self.imageCopy = self.image.copy()
         self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
@@ -26,12 +27,27 @@ class CircleDetectorWithCV:
         edgedImage = cv2.erode(edgedImage, None, iterations=1)
         rows = self.image.shape[0]
         circles = cv2.HoughCircles(image=edgedImage, method=cv2.HOUGH_GRADIENT, dp=1,
-                                   minDist=rows/8, param1=100, param2=20, minRadius=self.minRadius,
-                                   maxRadius=self.maxRadius)
+                                   minDist=rows/8, param1=100, param2=30, minRadius=pMinRadius,
+                                   maxRadius=pMaxRadius)
         return circles
 
     def findAllCircles(self, pOption):
-        listOfCircles = self.detectCircles()
+        numOfCircles = 0
+        listOfCircles = []
+        i = 0
+        while numOfCircles != self.numOfExpectedCircles:
+            if numOfCircles < self.numOfExpectedCircles:
+                listOfCircles = self.detectCircles(self.minRadius, self.maxRadius + i)
+            elif numOfCircles > self.numOfExpectedCircles:
+                listOfCircles = self.detectCircles(self.minRadius, self.maxRadius - i)
+            else:
+                listOfCircles = self.detectCircles(self.minRadius, self.maxRadius)
+
+            if listOfCircles is not None:
+                numOfCircles = int(sum(map(len, listOfCircles)))
+
+            i += 1
+
         listOfCoordsX = []
         listOfCoordsY = []
         listOfRadii = []
