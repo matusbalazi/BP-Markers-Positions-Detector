@@ -82,14 +82,15 @@ class DistanceCalculator:
                     elif pOption == 2:
                         pImage.text((int(mX), int(mY + 20)), "{:.2f}mm".format(distance), (83, 34, 171))
 
-                    file.write(str((i + 1)) + " -> " + str((j + 1)) + " = " + str(round(distance, 2)) + "mm" + "\n")
+                    #file.write(str((i + 1)) + " -> " + str((j + 1)) + " = " + str(round(distance, 2)) + "mm" + "\n")
+                    file.write(str((i + 1)) + " -> " + str((j + 1)) + " = " + str(round(distance, 2)) + "\n")
                     print(i + 1, "->", j + 1, "=", distance, "mm")
 
                 j += 1
 
             j = 0
             i += 1
-
+        file.write("\n")
         file.close()
 
         return pImage

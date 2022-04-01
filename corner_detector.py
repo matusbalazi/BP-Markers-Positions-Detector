@@ -49,4 +49,7 @@ class CornerDetector:
                         listOfMidpointsY.append(int(listOfCornersY[i]))
                         break
 
+        listOfMidpointsX.reverse()
+        listOfMidpointsY.reverse()
+
         return (listOfMidpointsX, listOfMidpointsY)

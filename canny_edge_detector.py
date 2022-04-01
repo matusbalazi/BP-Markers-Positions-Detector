@@ -18,9 +18,6 @@ class CannyEdgeDetector:
         # Transform the image to grayscale
         grayscaled = self.compute_grayscale(input_pixels, width, height)
 
-        plt.imshow(grayscaled, "gist_gray")
-        plt.show()
-
         # Blur it to remove noise
         blurred = self.compute_blur(grayscaled, width, height)
 

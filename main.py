@@ -1,6 +1,8 @@
 import perspective_transformation
 import circle_detector_with_cv
 import circle_detector_without_cv
+import subprocess
+import find_markers_positions
 from colorama import Fore, Style
 import argparse
 import sys
@@ -102,9 +104,27 @@ def main():
             print()
 
             if decision3 == "1":
-                cv2.imshow("Image", circleDetector.findAllCircles(1))
+                value, img = circleDetector.findAllCircles(1, 1)
+                if value == 1:
+                    cv2.imshow("Image", img)
+                else:
+                    decision4 = input(Fore.MAGENTA +"Chcete spustit rozsirenu detekciu kruhov? [Y/N]: " + Style.RESET_ALL)
+                    if decision4 == "Y":
+                        value, img = circleDetector.findAllCircles(1, 0)
+                        cv2.imshow("Image", img)
+                    elif decision4 == "N":
+                        cv2.imshow("Image", img)
             elif decision3 == "2":
-                cv2.imshow("Image", circleDetector.findAllCircles(2))
+                value, img = circleDetector.findAllCircles(2, 1)
+                if value == 1:
+                    cv2.imshow("Image", img)
+                else:
+                    decision4 = input(Fore.MAGENTA + "Chcete spustit rozsirenu detekciu kruhov? [Y/N]: " + Style.RESET_ALL)
+                    if decision4 == "Y":
+                        value, img = circleDetector.findAllCircles(2, 0)
+                        cv2.imshow("Image", img)
+                    elif decision4 == "N":
+                        cv2.imshow("Image", img)
 
             cv2.waitKey(0)
             cv2.destroyAllWindows()
@@ -126,21 +146,50 @@ def main():
                 minRadius = input(Fore.MAGENTA + "Zadajte najmensi polomer hladaneho kruhu: " + Style.RESET_ALL)
                 maxRadius = input(Fore.MAGENTA + "Zadajte najvacsi polomer hladaneho kruhu: " + Style.RESET_ALL)
                 objSize = input(Fore.MAGENTA + "Zadajte priemer kruhu v skutocnosti: " + Style.RESET_ALL)
+                numOfExpectedCircles = input(Fore.MAGENTA + "Zadajte kolko kruhov by malo byt detegovanych: " + Style.RESET_ALL)
 
             circleDetector = None
 
             if decision3 == "1":
-                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(image, int(minRadius), int(maxRadius), int(objSize))
+                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(image, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
             elif decision3 == "2":
-                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(newImage, int(minRadius), int(maxRadius), int(objSize))
+                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(newImage, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
 
-            name = circleDetector.findAllCircles()
-            img = Image.open(name)
-            img.show()
+            value, name = circleDetector.findAllCircles(1)
+            if value == 1:
+                img = Image.open(name)
+                img.show()
+            else:
+                decision4 = input(Fore.MAGENTA + "Chcete spustit rozsirenu detekciu kruhov? [Y/N]: " + Style.RESET_ALL)
+                if decision4 == "Y":
+                    value, name = circleDetector.findAllCircles(0)
+                    img = Image.open(name)
+                    img.show()
+                elif decision4 == "N":
+                    img = Image.open(name)
+                    img.show()
 
         elif decision == "0":
             wasEnd = True
-            #newImage = image
+
+    file = open("result.txt", "r")
+    listOfLines = file.readlines()
+    file.close()
+
+    i = 0
+    listOfMeasures = []
+    for line in listOfLines:
+        if i < len(listOfLines) - 1:
+            measure = float(line[9:])
+            print("Item: ", measure)
+            listOfMeasures.append(measure)
+        i += 1
+
+    print(listOfMeasures)
+
+    #del args
+    #exec(open("find_markers_positions.py").read())
+    subprocess.call("./find_markers_positions.py", shell=True)
 
 if __name__ == "__main__":
     main()
