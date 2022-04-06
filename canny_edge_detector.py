@@ -1,29 +1,38 @@
 from math import sqrt, atan2, pi
 import numpy as np
 
+
 class CannyEdgeDetector:
+    # Initialization
     def __init__(self, pImage):
         self.image = pImage
 
-    def canny_edge_detector(self):
-        input_pixels = self.image.load()
+    # Canny Edge Detector algorithm cleans the image
+    # and only keeps the strongest edges
+    def applyCannyEdgeDetector(self):
+        inputPixels = self.image.load()
         width = self.image.width
         height = self.image.height
 
-        grayscaled = self.compute_grayscale(input_pixels, width, height)
+        # Image is converted to grayscale
+        grayscaledImg = self.convertImageToGrayscale(inputPixels, width, height)
 
-        blurred = self.compute_blur(grayscaled, width, height)
+        # Image is blurred to remove noise
+        blurredImg = self.blurImage(grayscaledImg, width, height)
 
-        gradient, direction = self.compute_gradient(blurred, width, height)
+        # Gradient and its direction is calculated
+        gradient, direction = self.calculateGradient(blurredImg, width, height)
 
-        self.filter_out_non_maximum(gradient, direction, width, height)
+        # Non-maximum suppression is applicated
+        self.nonMaximumSuppression(gradient, direction, width, height)
 
-        keep = self.filter_strong_edges(gradient, width, height, 20, 25)
+        # Some edges, which not suited requirements are filtered out
+        keepEdges = self.applyThresholdToFilterEdges(gradient, width, height, 20, 25)
 
-        return keep
+        return keepEdges
 
-    # transformacia obrazka do odtienov sivej
-    def compute_grayscale(self, pInputPixels, pWidth, pHeight):
+    # Transforms the image to grayscale
+    def convertImageToGrayscale(self, pInputPixels, pWidth, pHeight):
         grayscale = np.empty((pWidth, pHeight))
         for x in range(pWidth):
             for y in range(pHeight):
@@ -31,24 +40,26 @@ class CannyEdgeDetector:
                 grayscale[x, y] = (pixel[0] + pixel[1] + pixel[2]) / 3
         return grayscale
 
-    # redukcia sumu rozostrenim obrazka pomocou Gaussovho filtra
-    def compute_blur(self, pInputPixels, pWidth, pHeight):
-        # ponechanie mierky povodneho obrazka
+    # Reduces noise by blurring and smoothing
+    # the image using a Gaussian filter
+    def blurImage(self, pInputPixels, pWidth, pHeight):
+
+        # Keeps coordinates inside the image
         clip = lambda x, l, u: l if x < l else u if x > u else x
 
-        # Gausovsky filter
+        # Gaussian filter
         kernel = np.array([
-            [1 / 256,  4 / 256,  6 / 256,  4 / 256, 1 / 256],
+            [1 / 256, 4 / 256, 6 / 256, 4 / 256, 1 / 256],
             [4 / 256, 16 / 256, 24 / 256, 16 / 256, 4 / 256],
             [6 / 256, 24 / 256, 36 / 256, 24 / 256, 6 / 256],
             [4 / 256, 16 / 256, 24 / 256, 16 / 256, 4 / 256],
-            [1 / 256,  4 / 256,  6 / 256,  4 / 256, 1 / 256]
+            [1 / 256, 4 / 256, 6 / 256, 4 / 256, 1 / 256]
         ])
 
-        # stred Gausovskeho filtra
+        # Middle of the Gaussian filter
         offset = len(kernel) // 2
 
-        # rozostrenie obrazka
+        # Blurs the image to remove some unwanted noise
         blurred = np.empty((pWidth, pHeight))
         for x in range(pWidth):
             for y in range(pHeight):
@@ -61,8 +72,8 @@ class CannyEdgeDetector:
                 blurred[x, y] = int(acc)
         return blurred
 
-    # vypocet gradientu a jeho smeru
-    def compute_gradient(self, pInputPixels, pWidth, pHeight):
+    # Calculates image gradient and its direction to identify the edges
+    def calculateGradient(self, pInputPixels, pWidth, pHeight):
         gradient = np.zeros((pWidth, pHeight))
         direction = np.zeros((pWidth, pHeight))
         for x in range(pWidth):
@@ -70,12 +81,14 @@ class CannyEdgeDetector:
                 if 0 < x < pWidth - 1 and 0 < y < pHeight - 1:
                     magx = pInputPixels[x + 1, y] - pInputPixels[x - 1, y]
                     magy = pInputPixels[x, y + 1] - pInputPixels[x, y - 1]
-                    gradient[x, y] = sqrt(magx**2 + magy**2)
+                    gradient[x, y] = sqrt(magx ** 2 + magy ** 2)
                     direction[x, y] = atan2(magy, magx)
         return gradient, direction
 
-    # metoda potlacenia pixelov s mensou hodnotou intenzity, ako maju pixely v smere gradientu
-    def filter_out_non_maximum(self, pGradient, pDirection, pWidth, pHeight):
+    # Keeps only the pixels that have the maximum intensity among
+    # their neighbors in the direction of gradient, as a result
+    # are thinner and more accurate edges
+    def nonMaximumSuppression(self, pGradient, pDirection, pWidth, pHeight):
         for x in range(1, pWidth - 1):
             for y in range(1, pHeight - 1):
                 angle = pDirection[x, y] if pDirection[x, y] >= 0 else pDirection[x, y] + pi
@@ -87,24 +100,27 @@ class CannyEdgeDetector:
                         or (rangle == 3 and (pGradient[x + 1, y - 1] > mag or pGradient[x - 1, y + 1] > mag))):
                     pGradient[x, y] = 0
 
-    # urcenie hran pomocou detekcie prahovych pixelov a transformaciiou slabych pixelov na silne
-    def filter_strong_edges(self, pGradient, pWidth, pHeight, pLow, pHigh):
-        # ponechanie silnych pixelov
+    # Edge determination by threshold pixel detection,
+    # strong pixels are retained and some weak pixels
+    # are transformed into strong ones
+    def applyThresholdToFilterEdges(self, pGradient, pWidth, pHeight, pLow, pHigh):
+
+        # Keeping strong pixels
         keep = set()
         for x in range(pWidth):
             for y in range(pHeight):
                 if pGradient[x, y] > pHigh:
                     keep.add((x, y))
 
-        # transformacia slabeho pixelu na silny, ale iba vtedy,
-        # ak sa v jeho najblizsom okoli nachadza aspon jeden silny pixel
+        # Transforms a weak pixel to a strong one, but only if there
+        # is at least one strong pixel in its immediate vicinity
         lastiter = keep
         while lastiter:
             newkeep = set()
             for x, y in lastiter:
                 for a, b in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
-                    if pGradient[x + a, y + b] > pLow and (x+a, y+b) not in keep:
-                        newkeep.add((x+a, y+b))
+                    if pGradient[x + a, y + b] > pLow and (x + a, y + b) not in keep:
+                        newkeep.add((x + a, y + b))
             keep.update(newkeep)
             lastiter = newkeep
 

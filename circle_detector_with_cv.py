@@ -1,4 +1,3 @@
-from filecmp import cmp
 import numpy as np
 import distance_calculator
 import corner_detector
@@ -6,27 +5,36 @@ from colorama import Fore, Style
 from operator import itemgetter
 import cv2
 
+
 class CircleDetectorWithCV:
+    # Initialization
     def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles, pTypeOfImage):
         self.image = cv2.imread(pImageFilename)
-        dimensions = self.image.shape
-        if (dimensions[1] > 1500):
-            self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.5)
         self.minRadius = pMinRadius
         self.maxRadius = pMaxRadius
         self.objSize = pObjSize
         self.numOfExpectedCircles = pNumOfExpectedCircles
         self.typeOfImage = pTypeOfImage
-        self.decision = "N"
+
+        dimensions = self.image.shape
+
+        # Resize input image if the image is too big
+        if (dimensions[1] > 1500):
+            self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.5)
+
         self.imageCopy = 0
         self.distance = distance_calculator.DistanceCalculator(self.objSize)
         self.corners = corner_detector.CornerDetector(self.image, self.numOfExpectedCircles, self.typeOfImage)
 
+    # Uses the Hough Circle Transform
+    # to detect circles in the image
     def detectCircles(self, pImage, pMinRadius, pMaxRadius):
         self.imageCopy = pImage.copy()
         pImage = cv2.cvtColor(pImage, cv2.COLOR_BGR2RGB)
         pImage = cv2.cvtColor(pImage, cv2.COLOR_BGR2GRAY)
         pImage = cv2.medianBlur(pImage, 5)
+
+        # Application of Canny Edge Detection algorithm
         edgedImage = cv2.Canny(pImage, 50, 100)
         edgedImage = cv2.dilate(edgedImage, None, iterations=1)
         edgedImage = cv2.erode(edgedImage, None, iterations=1)
@@ -36,6 +44,7 @@ class CircleDetectorWithCV:
                                    maxRadius=pMaxRadius)
         return circles
 
+    # Compares coordinates of two detected circles
     def cmp(self, pCoord1, pCoord2):
         marker1 = None
         marker2 = None
@@ -47,6 +56,8 @@ class CircleDetectorWithCV:
             marker2 = pCoord1
         return marker1, marker2
 
+    # Sorts circles according to anchor positions
+    # (anchors A, B and C) in the image
     def sortCircles(self, pListOfCircles, pTypeOfImage):
         markersOrder = []
         auxList = sorted(pListOfCircles[0], key=itemgetter(1), reverse=True)
@@ -73,11 +84,14 @@ class CircleDetectorWithCV:
 
         return sortedList
 
+    # Finds circles in the image according to input parameters
+    # using Hough Circle Transform method and calculates
+    # distances between their midpoints
     def findAllCircles(self, pOption, pWasSuccess):
-        #TODO: Ukladat kazdy obrazok do priecinku images
-
         listOfCircles = []
 
+        # If the previous detection was not complete or reliable
+        # then the extended detection of circles starts
         if pWasSuccess == 0:
             numOfCircles = 0
             i = 0
@@ -100,8 +114,14 @@ class CircleDetectorWithCV:
         listOfCoordsY = []
         listOfRadii = []
 
+        # If some of the required circles have been
+        # found, their processing continues
         if listOfCircles is not None:
             aux = None
+
+            # If the counts of detected circles and expected circles
+            # are same, then sorts circles to the correct order
+            # according to anchors positions
             if int(sum(map(len, listOfCircles))) == self.numOfExpectedCircles:
                 sortedListOfCircles = self.sortCircles(listOfCircles, self.typeOfImage)
                 listOfCircles = sortedListOfCircles
@@ -109,6 +129,8 @@ class CircleDetectorWithCV:
             else:
                 aux = listOfCircles[0, :]
 
+            # Extracts coordinates and radii from the detected
+            # circles and draws the circles in the image
             for co, i in enumerate(aux, start=1):
                 if pOption == 1:
                     cv2.putText(self.imageCopy, "{:d}.".format(co - 1), (int(i[0] + 20), int(i[1] + 20)),
@@ -122,14 +144,21 @@ class CircleDetectorWithCV:
 
             numOfCircles = int(sum(map(len, listOfCircles)))
 
+            # Based on the method chosen by the user,
+            # determines if the required number of circles
+            # has been detected or not, calculates distances
+            # between them and returns the image
             if pOption == 1:
                 if numOfCircles < self.numOfExpectedCircles:
-                    print(Fore.RED + "\nNebol detegovany pozadovany pocet kruhov!")
-                    print(Fore.YELLOW + "Skuste zmenit interval medzi najmensim a najvacsim hladanym polomerom.")
+                    print(Fore.RED + "\nThe required number of circles was not detected!")
+                    print(
+                        Fore.YELLOW + "Try changing interval between the smallest and largest radii you are looking for.")
                     print(Style.RESET_ALL)
-                    return 0, self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.imageCopy, 1)
+                    return 0, self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.imageCopy,
+                                                             1)
                 else:
-                    return 1, self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.imageCopy, 1)
+                    return 1, self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.imageCopy,
+                                                             1)
             elif pOption == 2:
                 list1, list2 = self.corners.findMidpointsOfCircles(listOfCoordsX, listOfCoordsY, listOfRadii)
                 print(list1)
@@ -143,15 +172,18 @@ class CircleDetectorWithCV:
                 listOfRadii.reverse()
 
                 if numOfCircles < self.numOfExpectedCircles:
-                    print(Fore.RED + "\nNebol detegovany pozadovany pocet kruhov!")
-                    print(Fore.YELLOW + "Skuste zmenit interval medzi najmensim a najvacsim hladanym polomerom.")
+                    print(Fore.RED + "\nThe required number of circles was not detected!")
+                    print(
+                        Fore.YELLOW + "Try changing interval between the smallest and largest radii you are looking for.")
                     print(Style.RESET_ALL)
                     return 0, self.distance.findAllDistances(list1, list2, listOfRadii, self.imageCopy, 1)
                 else:
                     return 1, self.distance.findAllDistances(list1, list2, listOfRadii, self.imageCopy, 1)
         else:
-            print(Fore.RED + "\nNeboli detegovane ziadne kruhy!")
-            print(Fore.YELLOW + "Skuste zmenit interval medzi najmensim a najvacsim hladanym polomerom.")
+
+            # If no circles were detected, returns original image
+            print(Fore.RED + "\nNo circles detected!")
+            print(Fore.YELLOW + "Try changing interval between the smallest and largest radii you are looking for.")
             print(Style.RESET_ALL)
 
             return 0, self.image

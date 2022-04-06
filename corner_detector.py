@@ -1,14 +1,17 @@
 import cv2
 import numpy as np
 
+
 class CornerDetector:
+    # Initialization
     def __init__(self, pImage, pNumOfExpectedCircles, pTypeOfImage):
         self.image = pImage
         self.numOfExpectedCircles = pNumOfExpectedCircles
         self.typeOfImage = pTypeOfImage
         self.imageCopy = 0
 
-    # detekcia vsetkych rohov na obrazku
+    # Uses Harris Corner Detection method used to
+    # detect all the corners in the image
     def detectCorners(self):
         self.imageCopy = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         self.imageCopy = np.float32(self.imageCopy)
@@ -20,10 +23,11 @@ class CornerDetector:
         corners = cv2.cornerSubPix(self.imageCopy, np.float32(centroids), (5, 5), (-1, -1), criteria)
         return corners
 
+    # Sorting algorithm used to sort midpoints of circles according to their coordinates
     def bubbleSort(self, pList1, pList2):
         for i in range(0, len(pList2) - 1):
             for j in range(len(pList2) - 1):
-                if(pList2[j] > pList2[j + 1]):
+                if (pList2[j] > pList2[j + 1]):
                     temp1 = pList2[j]
                     pList2[j] = pList2[j + 1]
                     pList2[j + 1] = temp1
@@ -35,6 +39,7 @@ class CornerDetector:
         pList1.reverse()
         pList2.reverse()
 
+    # Sorts midpoints of circles according to anchor positions (anchors A, B and C)
     def sortMidpoints(self, pListOfMidpointsX, pListOfMidpointsY, pTypeOfImage):
         listX = []
         listY = []
@@ -73,18 +78,21 @@ class CornerDetector:
 
         return listX, listY
 
-   # upravena Houghova kruhova transformacia na zaklade Harrisovej metody detekcie rohov
+    # Modified Hough Circle Transform based on Harris corner detection method
+    # defines new midpoints of circles in the image
     def findMidpointsOfCircles(self, pListOfCoordsX, pListOfCoordsY, pListOfRadii):
         corners = self.detectCorners()
         listOfCorners = []
         listOfCornersX = []
         listOfCornersY = []
 
-        # odstranenie vsetkych rohov, ktore sa nenachadzaju v niektorom z kruhov
+        # Filtering out all corners that are not in any of the circles
         for i in range(1, len(corners)):
             for j in range(len(corners[i])):
                 listOfCorners.append(corners[i][j])
 
+        # Dividing the coordinates of the corners that are
+        # in one of the circles into X coord and Y coord
         for i in range(len(listOfCorners)):
             if i % 2 == 0:
                 listOfCornersX.append(listOfCorners[i])
@@ -94,7 +102,8 @@ class CornerDetector:
         listOfMidpointsX = []
         listOfMidpointsY = []
 
-        # roh nachadzajuci si najblizsie k stredu doposial detegovaneho kruhu sa stane novym stredom kruhu
+        # The corner that is closest to the center of the circle
+        # detected so far becomes the new center of the circle
         for i in range(len(listOfCornersX)):
             for j in range(len(pListOfCoordsX)):
                 if (listOfCornersX[i] >= (pListOfCoordsX[j] - pListOfRadii[j]) and
@@ -107,10 +116,15 @@ class CornerDetector:
                         listOfMidpointsY.append(int(listOfCornersY[i]))
                         break
 
+        # Sorts midpoints of final circles from the largest
+        # coordinates to the smallest coordinates
         self.bubbleSort(listOfMidpointsX, listOfMidpointsY)
 
+        # Sorts previously sorted midpoints of circles to
+        # the correct order according to anchors
         if len(listOfMidpointsX) == self.numOfExpectedCircles:
-            markersCorrectOrderX, markersCorrectOrderY = self.sortMidpoints(listOfMidpointsX, listOfMidpointsY, self.typeOfImage)
+            markersCorrectOrderX, markersCorrectOrderY = self.sortMidpoints(listOfMidpointsX, listOfMidpointsY,
+                                                                            self.typeOfImage)
         else:
             markersCorrectOrderX, markersCorrectOrderY = listOfMidpointsX, listOfMidpointsY
 

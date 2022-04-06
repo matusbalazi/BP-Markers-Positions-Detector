@@ -2,24 +2,27 @@ import cv2
 import math
 import random
 
+
 class DistanceCalculator:
+    # Initialization
     def __init__(self, pObjSize):
         self.objSize = pObjSize
         self.averageDiameter = 0
 
-    # vypocitanie priemerneho priemeru kruhu
+    # Calculation of the average circle diameter
     def setAverageDiameter(self, pRadii):
         for x in range(len(pRadii)):
             self.averageDiameter = self.averageDiameter + 2 * pRadii[x]
 
         self.averageDiameter = self.averageDiameter / len(pRadii)
 
+    # Returns average circle diameter
     def getAverageDiameter(self):
         return self.averageDiameter
 
-    # vypocitanie vzdialenosti medzi stredmi dvoch kruhov na zaklade
-    # Euklidovskej vzdialenosti a pomeru velkosti skutocneho kruhu (mm)
-    # a detegovaneho kruhu (px)
+    # Calculation of the distance between the centers of two circles
+    # based on the Euclidean distance and the size ratio of the actual
+    # circle (in mm) and the detected circle (in px)
     def calculateDistance(self, pPointA, pPointB):
         x1, y1 = pPointA
         x2, y2 = pPointB
@@ -47,12 +50,12 @@ class DistanceCalculator:
 
         return math.sqrt(((width * sizeOfOnePixel) ** 2) + ((height * sizeOfOnePixel) ** 2))
 
-    # najdenie stredu kruhu
+    # Find the center of the circle
     def midPoint(self, pPointA, pPointB):
         return ((pPointA[0] + pPointB[0]) * 0.5, (pPointA[1] + pPointB[1]) * 0.5)
 
-    # urcenie vzdialenosti medzi stredmi vsetkych detegovanych kruhov,
-    # ich zapisanie do suboru a zakreslenie do obrazka
+    # Determine the distance between the centers of all detected circles,
+    # write these distances to a file and draw in an image
     def findAllDistances(self, pCoordsX, pCoordsY, pRadii, pImage, pOption):
         self.setAverageDiameter(pRadii)
         i = 0
@@ -66,13 +69,14 @@ class DistanceCalculator:
                 if j > i:
                     pointB = (pCoordsX[j], pCoordsY[j])
                     color = (random.randint(0, 255), random.randint(0, 255),
-                                random.randint(0, 255))
+                             random.randint(0, 255))
                     if pOption == 1:
                         cv2.line(pImage, (pCoordsX[i], pCoordsY[i]), (pCoordsX[j], pCoordsY[j]),
-                                color, 2)
+                                 color, 2)
                     elif pOption == 2:
-                        pImage.line((pCoordsX[i], pCoordsY[i], pCoordsX[j], pCoordsY[j]), (random.randint(0, 255), random.randint(0, 255),
-                                                                                             random.randint(0, 255)))
+                        pImage.line((pCoordsX[i], pCoordsY[i], pCoordsX[j], pCoordsY[j]),
+                                    (random.randint(0, 255), random.randint(0, 255),
+                                     random.randint(0, 255)))
 
                     distance = self.calculateDistance(pointA, pointB)
                     (mX, mY) = self.midPoint((pCoordsX[i], pCoordsY[i]), (pCoordsX[j], pCoordsY[j]))
@@ -90,6 +94,7 @@ class DistanceCalculator:
 
             j = 0
             i += 1
+
         file.write("\n")
         file.close()
 

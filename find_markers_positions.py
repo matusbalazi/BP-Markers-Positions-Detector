@@ -1,137 +1,133 @@
 #!/usr/bin/env python3
 
+# This script is used for finding XYZ positions of markers placed on the effector
 
-"""For finding hp-marker positions.
-   Use for example like
-   $ ./find-marker-positions.py --measurements 211.0 212.0 225.2 239.0 240.0 242.5 120.0 232.0 306.0 287.0 139.0 133.7 286.5 308.0 248.2 216.6 277.7 327.0 97.0 303.5 243.9
+# As an input are 21 distance measurements between pairs of markers in the usual
+# counter clockwise winding order:
+#       Nozzle->M0, Nozzle->M1, Nozzle->M2, Nozzle->M3, Nozzle->M4, Nozzle->M5,
+#       M0->M1, M0->M2, M0->M3, M0->M4, M0->M5,
+#       M1->M2, M1->M3, M1->M4, M1->M5,
+#       M2->M3, M2->M4, M2->M5,
+#       M3->M4, M3->M5,
+#       M4->M5
 
-    measurements : The 21 distance measurements between pairs of markers.
-                   Pairs are in the usual ccw order:
-                   nozzle-m0, nozzle-m1, nozzle-m2, nozzle-m3, nozzle-m4, nozzle-m5
-                   m0-m1, m0-m2, m0-m3, m0-m4, m0-m5,
-                   m1-m2, m1-m3, m1-m4, m1-m5,
-                   m2-m3, m2-m4, m2-m5,
-                   m3-m4, m3-m5,
-                   m4-m5.
-
-"""
-
-from __future__ import division  # Always want 3/2 = 1.5
+from __future__ import division
+from colorama import Fore, Style
 import numpy as np
 import scipy.optimize
 import argparse
-import timeit
 import sys
 import xml.etree.cElementTree as ET
-from xml.dom import minidom
-import os
 
 
-def posvec2matrix_nozzle(posvec, intermediate_solution):
+# Converts position vector to matrix with nozzle
+def positionVectorToMatrixWithNozzle(pPositionVector, pIntermediateSolution):
     return np.append(
-        np.array([[0.0, 0.0, 0.0]]), posvec2matrix_no_nozzle(intermediate_solution) - posvec, axis=0  # Nozzle
+        np.array([[0.0, 0.0, 0.0]]), positionVectorToMatrixWithoutNozzle(pIntermediateSolution) - pPositionVector,
+        axis=0  # Nozzle
     )
 
 
-def posvec2matrix_no_nozzle(posvec):
+# Converts position vector to matrix without nozzle
+def positionVectorToMatrixWithoutNozzle(pPositionVector):
     return np.array(
         [
-            [0.0, 0.0, 0.0],  # m0
-            [posvec[0], 0.0, 0.0],
-            [posvec[1], posvec[2], 0.0],
-            [posvec[3], posvec[4], 0.0],
-            [posvec[5], posvec[6], 0.0],
-            [posvec[7], posvec[8], 0.0],
+            [0.0, 0.0, 0.0],  # M0
+            [pPositionVector[0], 0.0, 0.0],
+            [pPositionVector[1], pPositionVector[2], 0.0],
+            [pPositionVector[3], pPositionVector[4], 0.0],
+            [pPositionVector[5], pPositionVector[6], 0.0],
+            [pPositionVector[7], pPositionVector[8], 0.0],
         ]
     )
 
 
-def cost_nozzle(positions, measurements):
-    """The cost function.
+# Calculates cost with nozzle measurements
+def costWithNozzle(pPositions, pMeasurements):
+    # Parameters
+    # ----------
+    # pPositions : A 7x2 matrix of marker positions
+    #             Nozzle is first
+    #             Markers are in the usual ccw order:
+    #             M0, M1, M2, M3, M4, M5
+    # pMeasurements : The 21 distance measurements between pairs of markers
+    #                Pairs are in the usual ccw order:
+    #                Nozzle-M0, Nozzle-M1, Nozzle-M2, Nozzle-M3, Nozzle-M4, Nozzle-M5
+    #                M0-M1, M0-M2, M0-M3, M0-M4, M0-M5,
+    #                M1-M2, M1-M3, M1-M4, M1-M5,
+    #                M2-M3, M2-M4, M2-M5,
+    #                M3-M4, M3-M5,
+    #                M4-M5
 
-    Parameters
-    ----------
-    positions : A 7x2 matrix of marker positions.
-                Nozzle is first.
-                Markers are in the usual ccw order:
-                m0, m1, m2, m3, m4, m5
-    measurements : The 21 distance measurements between pairs of markers.
-                   Pairs are in the usual ccw order:
-                   nozzle-m0, nozzle-m1, nozzle-m2, nozzle-m3, nozzle-m4, nozzle-m5
-                   m0-m1, m0-m2, m0-m3, m0-m4, m0-m5,
-                   m1-m2, m1-m3, m1-m4, m1-m5,
-                   m2-m3, m2-m4, m2-m5,
-                   m3-m4, m3-m5,
-                   m4-m5.
-    """
     return (
-        +pow(np.linalg.norm(positions[0] - positions[1], 2) - measurements[0], 2)
-        + pow(np.linalg.norm(positions[0] - positions[2], 2) - measurements[1], 2)
-        + pow(np.linalg.norm(positions[0] - positions[3], 2) - measurements[2], 2)
-        + pow(np.linalg.norm(positions[0] - positions[4], 2) - measurements[3], 2)
-        + pow(np.linalg.norm(positions[0] - positions[5], 2) - measurements[4], 2)
-        + pow(np.linalg.norm(positions[0] - positions[6], 2) - measurements[5], 2)
-        + pow(np.linalg.norm(positions[1] - positions[2], 2) - measurements[6], 2)
-        + pow(np.linalg.norm(positions[1] - positions[3], 2) - measurements[7], 2)
-        + pow(np.linalg.norm(positions[1] - positions[4], 2) - measurements[8], 2)
-        + pow(np.linalg.norm(positions[1] - positions[5], 2) - measurements[9], 2)
-        + pow(np.linalg.norm(positions[1] - positions[6], 2) - measurements[10], 2)
-        + pow(np.linalg.norm(positions[2] - positions[3], 2) - measurements[11], 2)
-        + pow(np.linalg.norm(positions[2] - positions[4], 2) - measurements[12], 2)
-        + pow(np.linalg.norm(positions[2] - positions[5], 2) - measurements[13], 2)
-        + pow(np.linalg.norm(positions[2] - positions[6], 2) - measurements[14], 2)
-        + pow(np.linalg.norm(positions[3] - positions[4], 2) - measurements[15], 2)
-        + pow(np.linalg.norm(positions[3] - positions[5], 2) - measurements[16], 2)
-        + pow(np.linalg.norm(positions[3] - positions[6], 2) - measurements[17], 2)
-        + pow(np.linalg.norm(positions[4] - positions[5], 2) - measurements[18], 2)
-        + pow(np.linalg.norm(positions[4] - positions[6], 2) - measurements[19], 2)
-        + pow(np.linalg.norm(positions[5] - positions[6], 2) - measurements[20], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[1], 2) - pMeasurements[0], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[2], 2) - pMeasurements[1], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[3], 2) - pMeasurements[2], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[4], 2) - pMeasurements[3], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[5], 2) - pMeasurements[4], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[6], 2) - pMeasurements[5], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[2], 2) - pMeasurements[6], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[3], 2) - pMeasurements[7], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[4], 2) - pMeasurements[8], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[5], 2) - pMeasurements[9], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[6], 2) - pMeasurements[10], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[3], 2) - pMeasurements[11], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[4], 2) - pMeasurements[12], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[5], 2) - pMeasurements[13], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[6], 2) - pMeasurements[14], 2)
+            + pow(np.linalg.norm(pPositions[3] - pPositions[4], 2) - pMeasurements[15], 2)
+            + pow(np.linalg.norm(pPositions[3] - pPositions[5], 2) - pMeasurements[16], 2)
+            + pow(np.linalg.norm(pPositions[3] - pPositions[6], 2) - pMeasurements[17], 2)
+            + pow(np.linalg.norm(pPositions[4] - pPositions[5], 2) - pMeasurements[18], 2)
+            + pow(np.linalg.norm(pPositions[4] - pPositions[6], 2) - pMeasurements[19], 2)
+            + pow(np.linalg.norm(pPositions[5] - pPositions[6], 2) - pMeasurements[20], 2)
     )
 
 
-def cost_no_nozzle(positions, measurements):
-    """The cost function.
+# Calculates cost without nozzle
+def costWithoutNozzle(pPositions, pMeasurements):
+    # Parameters
+    # ----------
+    # pPositions : A 6x2 matrix of marker positions
+    #             Nozzle is first
+    #             Markers are in the usual ccw order:
+    # pMeasurements : The 15 distance measurements between pairs of markers
+    #                Pairs are in the usual ccw order:
+    #                M0-M1, M0-M2, M0-M3, M0-M4, M0-M5,
+    #                M1-M2, M1-M3, M1-M4, M1-M5,
+    #                M2-M3, M2-M4, M2-M5,
+    #                M3-M4, M3-M5,
+    #                M4-M5
 
-    Parameters
-    ----------
-    positions : A 6x2 matrix of marker positions.
-                Markers are in the usual ccw order.
-    measurements : The 15 distance measurements between pairs of markers.
-                   Pairs are in the usual ccw order:
-                   m0-m1, m0-m2, m0-m3, m0-m4, m0-m5,
-                   m1-m2, m1-m3, m1-m4, m1-m5,
-                   m2-m3, m2-m4, m2-m5,
-                   m3-m4, m3-m5,
-                   m4-m5.
-    """
     return (
-        +pow(np.linalg.norm(positions[0] - positions[1], 2) - measurements[0], 2)
-        + pow(np.linalg.norm(positions[0] - positions[2], 2) - measurements[1], 2)
-        + pow(np.linalg.norm(positions[0] - positions[3], 2) - measurements[2], 2)
-        + pow(np.linalg.norm(positions[0] - positions[4], 2) - measurements[3], 2)
-        + pow(np.linalg.norm(positions[0] - positions[5], 2) - measurements[4], 2)
-        + pow(np.linalg.norm(positions[1] - positions[2], 2) - measurements[5], 2)
-        + pow(np.linalg.norm(positions[1] - positions[3], 2) - measurements[6], 2)
-        + pow(np.linalg.norm(positions[1] - positions[4], 2) - measurements[7], 2)
-        + pow(np.linalg.norm(positions[1] - positions[5], 2) - measurements[8], 2)
-        + pow(np.linalg.norm(positions[2] - positions[3], 2) - measurements[9], 2)
-        + pow(np.linalg.norm(positions[2] - positions[4], 2) - measurements[10], 2)
-        + pow(np.linalg.norm(positions[2] - positions[5], 2) - measurements[11], 2)
-        + pow(np.linalg.norm(positions[3] - positions[4], 2) - measurements[12], 2)
-        + pow(np.linalg.norm(positions[3] - positions[5], 2) - measurements[13], 2)
-        + pow(np.linalg.norm(positions[4] - positions[5], 2) - measurements[14], 2)
+            +pow(np.linalg.norm(pPositions[0] - pPositions[1], 2) - pMeasurements[0], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[2], 2) - pMeasurements[1], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[3], 2) - pMeasurements[2], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[4], 2) - pMeasurements[3], 2)
+            + pow(np.linalg.norm(pPositions[0] - pPositions[5], 2) - pMeasurements[4], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[2], 2) - pMeasurements[5], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[3], 2) - pMeasurements[6], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[4], 2) - pMeasurements[7], 2)
+            + pow(np.linalg.norm(pPositions[1] - pPositions[5], 2) - pMeasurements[8], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[3], 2) - pMeasurements[9], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[4], 2) - pMeasurements[10], 2)
+            + pow(np.linalg.norm(pPositions[2] - pPositions[5], 2) - pMeasurements[11], 2)
+            + pow(np.linalg.norm(pPositions[3] - pPositions[4], 2) - pMeasurements[12], 2)
+            + pow(np.linalg.norm(pPositions[3] - pPositions[5], 2) - pMeasurements[13], 2)
+            + pow(np.linalg.norm(pPositions[4] - pPositions[5], 2) - pMeasurements[14], 2)
     )
 
 
+# Finds reasonable markers positions based on a set of measurements
 def solve(measurements, method):
-    """Find reasonable marker positions based on a set of measurements."""
     print(method)
 
     marker_measurements = measurements
     if np.size(measurements) == 21:
-        marker_measurements = measurements[(21 - 15) :]
-    # m0 has known positions (0, 0, 0)
-    # m1 has unknown x-position
+        marker_measurements = measurements[(21 - 15):]
+
+    # M0 has known positions (0, 0, 0)
+    # M1 has unknown x-position
     # All others have unknown xy-positions
     num_params = 0 + 1 + 2 + 2 + 2 + 2
 
@@ -159,18 +155,20 @@ def solve(measurements, method):
         bound,
     ]
 
-    def costx_no_nozzle(posvec):
-        """Identical to cost_no_nozzle, except the shape of inputs"""
-        positions = posvec2matrix_no_nozzle(posvec)
-        return cost_no_nozzle(positions, marker_measurements)
+    # This is identical function to costWithoutNozzle,
+    # except the shape of inputs
+    def costXWithoutNozzle(posvec):
+        positions = positionVectorToMatrixWithoutNozzle(posvec)
+        return costWithoutNozzle(positions, marker_measurements)
 
     guess_0 = [0.0] * num_params
 
+    # Here begins optimization methods for finding best intermediate cost
     intermediate_cost = 0.0
     intermediate_solution = []
     if method == "SLSQP":
         sol = scipy.optimize.minimize(
-            costx_no_nozzle,
+            costXWithoutNozzle,
             guess_0,
             method="SLSQP",
             bounds=list(zip(lower_bound, upper_bound)),
@@ -181,7 +179,7 @@ def solve(measurements, method):
         intermediate_solution = sol.x
     elif method == "L-BFGS-B":
         sol = scipy.optimize.minimize(
-            costx_no_nozzle,
+            costXWithoutNozzle,
             guess_0,
             method="L-BFGS-B",
             bounds=list(zip(lower_bound, upper_bound)),
@@ -202,7 +200,7 @@ def solve(measurements, method):
         solver.SetTermination(Or(VTR(1e-25), COG(1e-10, 20)))
         solver.SetStrictRanges(lower_bound, upper_bound)
         solver.SetGenerationMonitor(VerboseMonitor(5))
-        solver.Solve(costx_no_nozzle)
+        solver.Solve(costXWithoutNozzle)
         intermediate_cost = solver.bestEnergy
         intermediate_solution = solver.bestSolution
     elif method == "differentialEvolutionSolver":
@@ -220,7 +218,7 @@ def solve(measurements, method):
         solver.SetStrictRanges(lower_bound, upper_bound)
         solver.SetGenerationMonitor(stepmon)
         solver.Solve(
-            costx_no_nozzle,
+            costXWithoutNozzle,
             termination=stop,
             strategy=Best1Bin,
         )
@@ -229,13 +227,15 @@ def solve(measurements, method):
     else:
         print("Method %s is not supported!" % method)
         sys.exit(1)
-    print("Best intermediate cost: ", intermediate_cost)
-    print("Best intermediate positions: \n%s" % posvec2matrix_no_nozzle(intermediate_solution))
-    intermediatePositions = posvec2matrix_no_nozzle(intermediate_solution)
+    print(Fore.GREEN + "Best intermediate cost:" + Style.RESET_ALL + " ", intermediate_cost)
+    print(Fore.GREEN + "Best intermediate positions:" + Style.RESET_ALL + "\n%s" % positionVectorToMatrixWithoutNozzle(
+        intermediate_solution))
+    intermediatePositions = positionVectorToMatrixWithoutNozzle(intermediate_solution)
     if np.size(measurements) == 15:
         print("Got only 15 samples, so will not try to find nozzle position\n")
         return
     nozzle_measurements = measurements[: (21 - 15)]
+
     # Look for nozzle's xyz-offset relative to marker 0
     num_params = 3
     lower_bound = [
@@ -245,17 +245,19 @@ def solve(measurements, method):
     ]
     upper_bound = [bound, bound, 0.0]
 
-    def costx_nozzle(posvec):
-        """Identical to cost_nozzle, except the shape of inputs"""
-        positions = posvec2matrix_nozzle(posvec, intermediate_solution)
-        return cost_nozzle(positions, measurements)
+    # This is identical function to costWithNozzle,
+    # except the shape of inputs
+    def costXWithNozzle(posvec):
+        positions = positionVectorToMatrixWithNozzle(posvec, intermediate_solution)
+        return costWithNozzle(positions, measurements)
 
+    # Here begins optimization methods for finding best final cost
     guess_0 = [0.0, 0.0, 0.0]
     final_cost = 0.0
     final_solution = []
     if method == "SLSQP":
         sol = scipy.optimize.minimize(
-            costx_nozzle,
+            costXWithNozzle,
             guess_0,
             method="SLSQP",
             bounds=list(zip(lower_bound, upper_bound)),
@@ -266,7 +268,7 @@ def solve(measurements, method):
         final_solution = sol.x
     elif method == "L-BFGS-B":
         sol = scipy.optimize.minimize(
-            costx_nozzle,
+            costXWithNozzle,
             guess_0,
             method="L-BFGS-B",
             bounds=list(zip(lower_bound, upper_bound)),
@@ -287,7 +289,7 @@ def solve(measurements, method):
         solver.SetTermination(Or(VTR(1e-25), COG(1e-10, 20)))
         solver.SetStrictRanges(lower_bound, upper_bound)
         solver.SetGenerationMonitor(VerboseMonitor(5))
-        solver.Solve(costx_nozzle)
+        solver.Solve(costXWithNozzle)
         final_cost = solver.bestEnergy
         final_solution = solver.bestSolution
     elif method == "differentialEvolutionSolver":
@@ -305,7 +307,7 @@ def solve(measurements, method):
         solver.SetStrictRanges(lower_bound, upper_bound)
         solver.SetGenerationMonitor(stepmon)
         solver.Solve(
-            costx_nozzle,
+            costXWithNozzle,
             termination=stop,
             strategy=Best1Bin,
         )
@@ -313,13 +315,15 @@ def solve(measurements, method):
         final_solution = solver.bestSolution
 
     print()
-    z_value = input("Please insert Z height (distance between nozzle plane and markers plane): ")
+    z_value = input(
+        Fore.MAGENTA + "Please insert Z height (distance between nozzle plane and markers plane): " + Style.RESET_ALL)
+    print()
 
-    print("Best final cost: ", final_cost)
-    print("Best final positions:")
-    final = posvec2matrix_nozzle(final_solution, intermediate_solution)[1:]
+    print(Fore.GREEN + "Best final cost:" + Style.RESET_ALL + " ", final_cost)
+    print(Fore.GREEN + "Best final positions:" + Style.RESET_ALL)
+    final = positionVectorToMatrixWithNozzle(final_solution, intermediate_solution)[1:]
 
-    # Generate myMarkerParams.xml where are placed XYZ positions of markers on effector
+    # Generates myMarkerParams.xml where are placed XYZ positions of markers on effector
     root = ET.Element("opencv_storage")
     markerPositions = ET.SubElement(root, "marker_positions", type_id="opencv-matrix")
     ET.SubElement(markerPositions, "rows").text = "6"
@@ -333,14 +337,16 @@ def solve(measurements, method):
     for num in range(0, 6):
         print(
             # "{0: 8.3f} {1: 8.3f} {2: 8.3f} <!-- Marker {3} -->".format(final[num][0], final[num][1], final[num][2], num)
-            "{0: 8.3f} {1: 8.3f} {2: 8.3f} <!-- Marker {3} -->".format(final[num][0], final[num][1], float(z_value), num)
+            "{0: 8.3f} {1: 8.3f} {2: 8.3f} <!-- Marker {3} -->".format(final[num][0], final[num][1], float(z_value),
+                                                                       num)
         )
         # matrix = matrix + str(final[num][0]) + "\t" + str(final[num][1]) + "\t" + str(final[num][2]) + "\n"
-        matrix = matrix + str(round(final[num][0], 3)) + "  " + str(round(final[num][1], 3)) + "  " + str(round(float(z_value), 3)) + "\n"
+        matrix = matrix + str(round(final[num][0], 3)) + "  " + str(round(final[num][1], 3)) + "  " + str(
+            round(float(z_value), 3)) + "\n"
 
     data.text = matrix
 
-    ET.SubElement(root, "marker_diameter").text= "90.0"
+    ET.SubElement(root, "marker_diameter").text = "90.0"
     ET.SubElement(root, "marker_type").text = "disk"
 
     tlMarkerCenter = ET.SubElement(root, "topleft_marker_center", type_id="opencv-matrix")
@@ -353,35 +359,36 @@ def solve(measurements, method):
     tree.write("myMarkerParams.xml", xml_declaration=True, encoding="utf-8")
 
     # HERE BEGINS PART FOR OLDER VERSIONS OF HPM
-
-    #bedMarkers = ET.SubElement(root, "bed_markers", type_id="opencv-matrix")
-    #ET.SubElement(bedMarkers, "rows").text = "6"
-    #ET.SubElement(bedMarkers, "cols").text = "3"
-    #ET.SubElement(bedMarkers, "dt").text = "d"
-    #data = ET.SubElement(bedMarkers, "data")
-    #comment = ET.Comment(" Below Are Bed Markers Positions (NOT REQUIRED) ")
-    #bedMarkers.insert(3, comment)
-    #comment = ET.Comment(" these values are only samples ")
-    #bedMarkers.insert(4, comment)
-    #comment = ET.Comment(" we do not have bed markers in our configuration ")
-    #bedMarkers.insert(5, comment)
-    #matrix = "\n"
-    #for i in intermediatePositions:
+    # bedMarkers = ET.SubElement(root, "bed_markers", type_id="opencv-matrix")
+    # ET.SubElement(bedMarkers, "rows").text = "6"
+    # ET.SubElement(bedMarkers, "cols").text = "3"
+    # ET.SubElement(bedMarkers, "dt").text = "d"
+    # data = ET.SubElement(bedMarkers, "data")
+    # comment = ET.Comment(" Below Are Bed Markers Positions (NOT REQUIRED) ")
+    # bedMarkers.insert(3, comment)
+    # comment = ET.Comment(" these values are only samples ")
+    # bedMarkers.insert(4, comment)
+    # comment = ET.Comment(" we do not have bed markers in our configuration ")
+    # bedMarkers.insert(5, comment)
+    # matrix = "\n"
+    # for i in intermediatePositions:
     #    matrix = matrix + str(i[0]) + "\t" + str(i[1]) + "\t" + str(i[2]) + "\n"
-    #data.text = matrix
-    #ET.SubElement(bedMarkers, "marker_diameter").text = "90.0"
-    #ET.SubElement(bedMarkers, "marker_type").text = "disk"
+    # data.text = matrix
+    # ET.SubElement(bedMarkers, "marker_diameter").text = "90.0"
+    # ET.SubElement(bedMarkers, "marker_type").text = "disk"
 
+
+# Indents elements in XML file
 def indent(elem, level=0):
-    i = "\n" + level*"  "
-    j = "\n" + (level-1)*"  "
+    i = "\n" + level * "  "
+    j = "\n" + (level - 1) * "  "
     if len(elem):
         if not elem.text or not elem.text.strip():
             elem.text = i + "  "
         if not elem.tail or not elem.tail.strip():
             elem.tail = i
         for subelem in elem:
-            indent(subelem, level+1)
+            indent(subelem, level + 1)
         if not elem.tail or not elem.tail.strip():
             elem.tail = j
     else:
@@ -390,10 +397,10 @@ def indent(elem, level=0):
     return elem
 
 
-class Store_as_array(argparse._StoreAction):
+class StoreAsArray(argparse._StoreAction):
     def __call__(self, parser, namespace, values, option_string=None):
         values = np.array(values)
-        return super(Store_as_array, self).__call__(parser, namespace, values, option_string)
+        return super(StoreAsArray, self).__call__(parser, namespace, values, option_string)
 
 
 if __name__ == "__main__":
@@ -410,7 +417,7 @@ if __name__ == "__main__":
         "-e",
         "--measurements",
         help="Specify the 6 measurements of distances between nozzle and marker centers, followed by the 15 measurements of distances between pairs of markers. The latter 15 measurements are the most important ones. Separate numbers by spaces.",
-        action=Store_as_array,
+        action=StoreAsArray,
         type=float,
         nargs="+",
         default=np.array([]),
@@ -425,53 +432,79 @@ if __name__ == "__main__":
     if args["method"] == "3":
         args["method"] = "differentialEvolutionSolver"
 
+    # Reads measurements from file and adds to a list
     measurements = args["measurements"]
     if np.size(measurements) == 0:
         file = open("measures.txt", "r")
         listOfLines = file.readlines()
         file.close()
 
-        print(listOfLines)
-
         listOfMeasures = []
         i = 0
         for line in listOfLines:
             if i < len(listOfLines):
                 measure = float(line.rstrip("\n"))
-                print("Item: ", measure)
                 listOfMeasures.append(measure)
             i += 1
 
-        print(listOfMeasures)
-        measurements = np.array(
-            # You might want to manually input positions where you made samples here like
-            [
-                listOfMeasures[0], # 385.0,  # 211.0,  # 210.0, # 212.0,
-                listOfMeasures[1], # 311.0,  # 212.0,  # 213.0, # 210.0,
-                listOfMeasures[2], # 324.0,  # 225.2,  # 223.0, # 226.0,
-                listOfMeasures[3], # 430.0,  # 239.0,  # 238.0, # 235.0,
-                listOfMeasures[4], # 455.5,  # 240.0,  # 239.0, # 241.0,
-                listOfMeasures[5], # 482.5,  # 242.5,  # 239.0, # 241.0,
-                listOfMeasures[6], # 326.25,  # 326.0, # 120.0,  # 120.5, # 120.5, # 121.0, # 120.0,
-                listOfMeasures[7], # 625.75,  # 625.5, # 232.0,  # 233.0, # 233.0,  #
-                listOfMeasures[8], # 811.5,  # 306.0,  # 306.0, # 306.0,  # 305.0, # 307.0,
-                listOfMeasures[9], # 743.0,  # 742.5, # 287.0,  # 288.1, # 288.1,  #
-                listOfMeasures[10], # 558.5,  # 558.0, # 139.0,  # 139.0, # 139.0,  # 139.0, # 140.0,
-                listOfMeasures[11], # 361.5,  # 361.0, # 133.7,  # 137.0, # 137.0,  # 135.0, # 137.0,
-                listOfMeasures[12], # 688.0,  # 286.5,  # 287.2, # 287.2,  #
-                listOfMeasures[13], # 766.5,  # 766.0, # 308.0,  # 310.0, # 310.0,  # 309.0, # 311.0,
-                listOfMeasures[14], # 733.5,  # 723.0, # 248.2,  # 247.5, # 247.5,  # 246.0, # 247.5,
-                listOfMeasures[15], # 422.5,  # 422.0, # 216.6,  # 208.5, # 208.5,  # 211.0, # 208.0,
-                listOfMeasures[16], # 650.5,  # 650.0, # 277.7,  # 271.1, # 271.1,  #
-                listOfMeasures[17], # 790.3,  # 789.5, # 327.0,  # 323.0, # 323.0,  # 322.0, # 324.0,
-                listOfMeasures[18], # 344.0,  # 97.0,  # 98.0, #  98.0,  # 99.0,  # 97.5,
-                listOfMeasures[19], # 648.0,  # 303.5,  # 302.0, # 302.0,  # 301.0, # 303.0,
-                listOfMeasures[20], # 358.0,  # 357.75, # 243.9,  # 241.75,# 241.75,  # 241.0, # 242.5,
-            ]
-        )
+        if len(listOfMeasures) == 21:
+            measurements = np.array(
+                [
+                    listOfMeasures[0],
+                    listOfMeasures[1],
+                    listOfMeasures[2],
+                    listOfMeasures[3],
+                    listOfMeasures[4],
+                    listOfMeasures[5],
+                    listOfMeasures[6],
+                    listOfMeasures[7],
+                    listOfMeasures[8],
+                    listOfMeasures[9],
+                    listOfMeasures[10],
+                    listOfMeasures[11],
+                    listOfMeasures[12],
+                    listOfMeasures[13],
+                    listOfMeasures[14],
+                    listOfMeasures[15],
+                    listOfMeasures[16],
+                    listOfMeasures[17],
+                    listOfMeasures[18],
+                    listOfMeasures[19],
+                    listOfMeasures[20],
+                ]
+            )
+        elif len(listOfMeasures) == 15:
+            measurements = np.array(
+                [
+                    listOfMeasures[0],
+                    listOfMeasures[1],
+                    listOfMeasures[2],
+                    listOfMeasures[3],
+                    listOfMeasures[4],
+                    listOfMeasures[5],
+                    listOfMeasures[6],
+                    listOfMeasures[7],
+                    listOfMeasures[8],
+                    listOfMeasures[9],
+                    listOfMeasures[10],
+                    listOfMeasures[11],
+                    listOfMeasures[12],
+                    listOfMeasures[13],
+                    listOfMeasures[14],
+                ]
+            )
+        else:
+            # Here you can manually add values
+            measurements = np.array(
+                [
+
+                ]
+            )
     if np.size(measurements) != 15 and np.size(measurements) != 21:
         print(
             "Error: You specified %d numbers after your -e/--measurements option, which is not 15 or 21 numbers. It must be 15 or 21 numbers."
         )
         sys.exit(1)
+
+    # Calculates XYZ markers positions based on a set of measurements
     solve(measurements, args["method"])
