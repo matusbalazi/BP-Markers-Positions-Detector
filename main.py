@@ -25,8 +25,6 @@ def main():
                     help="size of the known object in the real world (in milimeters)")
     args = vars(ap.parse_args())
 
-    print(len(sys.argv))
-
     wasEnd = False
     newImage = "output_images/afterPerspectiveTransformation.jpg"
 

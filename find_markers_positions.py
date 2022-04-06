@@ -119,12 +119,12 @@ def costWithoutNozzle(pPositions, pMeasurements):
 
 
 # Finds reasonable markers positions based on a set of measurements
-def solve(measurements, method):
-    print(method)
+def solve(pMeasurements, pMethod):
+    print(pMethod)
 
-    marker_measurements = measurements
-    if np.size(measurements) == 21:
-        marker_measurements = measurements[(21 - 15):]
+    marker_measurements = pMeasurements
+    if np.size(pMeasurements) == 21:
+        marker_measurements = pMeasurements[(21 - 15):]
 
     # M0 has known positions (0, 0, 0)
     # M1 has unknown x-position
@@ -157,8 +157,8 @@ def solve(measurements, method):
 
     # This is identical function to costWithoutNozzle,
     # except the shape of inputs
-    def costXWithoutNozzle(posvec):
-        positions = positionVectorToMatrixWithoutNozzle(posvec)
+    def costXWithoutNozzle(pPositionVector):
+        positions = positionVectorToMatrixWithoutNozzle(pPositionVector)
         return costWithoutNozzle(positions, marker_measurements)
 
     guess_0 = [0.0] * num_params
@@ -166,7 +166,7 @@ def solve(measurements, method):
     # Here begins optimization methods for finding best intermediate cost
     intermediate_cost = 0.0
     intermediate_solution = []
-    if method == "SLSQP":
+    if pMethod == "SLSQP":
         sol = scipy.optimize.minimize(
             costXWithoutNozzle,
             guess_0,
@@ -177,7 +177,7 @@ def solve(measurements, method):
         )
         intermediate_cost = sol.fun
         intermediate_solution = sol.x
-    elif method == "L-BFGS-B":
+    elif pMethod == "L-BFGS-B":
         sol = scipy.optimize.minimize(
             costXWithoutNozzle,
             guess_0,
@@ -187,7 +187,7 @@ def solve(measurements, method):
         )
         intermediate_cost = sol.fun
         intermediate_solution = sol.x
-    elif method == "PowellDirectionalSolver":
+    elif pMethod == "PowellDirectionalSolver":
         from mystic.solvers import PowellDirectionalSolver
         from mystic.termination import Or, CollapseAt, CollapseAs
         from mystic.termination import ChangeOverGeneration as COG
@@ -203,7 +203,7 @@ def solve(measurements, method):
         solver.Solve(costXWithoutNozzle)
         intermediate_cost = solver.bestEnergy
         intermediate_solution = solver.bestSolution
-    elif method == "differentialEvolutionSolver":
+    elif pMethod == "differentialEvolutionSolver":
         from mystic.solvers import DifferentialEvolutionSolver2
         from mystic.monitors import VerboseMonitor
         from mystic.termination import VTR, ChangeOverGeneration, And, Or
@@ -225,7 +225,7 @@ def solve(measurements, method):
         intermediate_cost = solver.bestEnergy
         intermediate_solution = solver.bestSolution
     else:
-        print("Method %s is not supported!" % method)
+        print("Method %s is not supported!" % pMethod)
         sys.exit(1)
     print(Fore.GREEN + "Best intermediate cost:" + Style.RESET_ALL + " ", intermediate_cost)
     print(Fore.GREEN + "Best intermediate positions:" + Style.RESET_ALL + "\n%s" % positionVectorToMatrixWithoutNozzle(
@@ -247,15 +247,15 @@ def solve(measurements, method):
 
     # This is identical function to costWithNozzle,
     # except the shape of inputs
-    def costXWithNozzle(posvec):
-        positions = positionVectorToMatrixWithNozzle(posvec, intermediate_solution)
+    def costXWithNozzle(pPositionVector):
+        positions = positionVectorToMatrixWithNozzle(pPositionVector, intermediate_solution)
         return costWithNozzle(positions, measurements)
 
     # Here begins optimization methods for finding best final cost
     guess_0 = [0.0, 0.0, 0.0]
     final_cost = 0.0
     final_solution = []
-    if method == "SLSQP":
+    if pMethod == "SLSQP":
         sol = scipy.optimize.minimize(
             costXWithNozzle,
             guess_0,
@@ -266,7 +266,7 @@ def solve(measurements, method):
         )
         final_cost = sol.fun
         final_solution = sol.x
-    elif method == "L-BFGS-B":
+    elif pMethod == "L-BFGS-B":
         sol = scipy.optimize.minimize(
             costXWithNozzle,
             guess_0,
@@ -276,7 +276,7 @@ def solve(measurements, method):
         )
         final_cost = sol.fun
         final_solution = sol.x
-    elif method == "PowellDirectionalSolver":
+    elif pMethod == "PowellDirectionalSolver":
         from mystic.solvers import PowellDirectionalSolver
         from mystic.termination import Or, CollapseAt, CollapseAs
         from mystic.termination import ChangeOverGeneration as COG
@@ -292,7 +292,7 @@ def solve(measurements, method):
         solver.Solve(costXWithNozzle)
         final_cost = solver.bestEnergy
         final_solution = solver.bestSolution
-    elif method == "differentialEvolutionSolver":
+    elif pMethod == "differentialEvolutionSolver":
         from mystic.solvers import DifferentialEvolutionSolver2
         from mystic.monitors import VerboseMonitor
         from mystic.termination import VTR, ChangeOverGeneration, And, Or
@@ -379,22 +379,22 @@ def solve(measurements, method):
 
 
 # Indents elements in XML file
-def indent(elem, level=0):
-    i = "\n" + level * "  "
-    j = "\n" + (level - 1) * "  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for subelem in elem:
-            indent(subelem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = j
+def indent(pElem, pLevel=0):
+    i = "\n" + pLevel * "  "
+    j = "\n" + (pLevel - 1) * "  "
+    if len(pElem):
+        if not pElem.text or not pElem.text.strip():
+            pElem.text = i + "  "
+        if not pElem.tail or not pElem.tail.strip():
+            pElem.tail = i
+        for subelem in pElem:
+            indent(subelem, pLevel + 1)
+        if not pElem.tail or not pElem.tail.strip():
+            pElem.tail = j
     else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = j
-    return elem
+        if pLevel and (not pElem.tail or not pElem.tail.strip()):
+            pElem.tail = j
+    return pElem
 
 
 class StoreAsArray(argparse._StoreAction):
