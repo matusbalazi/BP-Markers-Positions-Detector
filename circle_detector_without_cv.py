@@ -1,21 +1,24 @@
-import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from math import sqrt, pi, cos, sin
 from colorama import Fore, Style
-import math
-import matplotlib
 import canny_edge_detector
 import distance_calculator
 from collections import defaultdict
+from operator import itemgetter
 
 class CircleDetectorWithoutCV:
-    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles):
+    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles, pTypeOfImage):
         self.image = Image.open(pImageFilename)
+        if (self.image.size[0] > 1500):
+            newWidth = int(self.image.size[0] / 2)
+            newHeight = int(self.image.size[1] / 2)
+            self.image = self.image.resize((newWidth, newHeight))
         self.filename = pImageFilename
         self.minRadius = pMinRadius
         self.maxRadius = pMaxRadius
         self.objSize = pObjSize
         self.numOfExpectedCircles = pNumOfExpectedCircles
+        self.typeOfImage = pTypeOfImage
         self.outputImage = Image.new("RGB", self.image.size)
         self.outputImage.paste(self.image)
         self.drawResult = ImageDraw.Draw(self.outputImage)
@@ -24,12 +27,16 @@ class CircleDetectorWithoutCV:
         self.canny = canny_edge_detector.CannyEdgeDetector(self.image)
         self.distance = distance_calculator.DistanceCalculator(self.objSize)
 
+    # detekcia kruhov v obrazku na zaklade minimalneho a maximalneho polomeru
+    # threshold predstavuje prahovu hodnotu, od ktorej mozeme kruh povazovat
+    # za doveryhodny a splnajuci zadane kriteria
     def detectCircles(self, pMinRadius, pMaxRadius, pThreshold):
         points = []
         for r in range(pMinRadius, pMaxRadius + 1):
             for t in range(self.steps):
                 points.append((r, int(r * cos(2 * pi * t / self.steps)), int(r * sin(2 * pi * t / self.steps))))
 
+        # Cannyho algoritmus detekcie hran
         acc = defaultdict(int)
         for x, y in self.canny.canny_edge_detector():
             for r, dx, dy in points:
@@ -37,6 +44,7 @@ class CircleDetectorWithoutCV:
                 b = y - dy
                 acc[(a, b, r)] += 1
 
+        # Houghova kruhova transformacia
         circles = []
         for k, v in sorted(acc.items(), key=lambda i: -i[1]):
             x, y, r = k
@@ -47,11 +55,48 @@ class CircleDetectorWithoutCV:
         print(circles)
         return circles
 
-    def sortCircles(self, pListOfCircles):
-        pListOfCircles[0], pListOfCircles[4] = pListOfCircles[4], pListOfCircles[0]
-        pListOfCircles[1], pListOfCircles[5] = pListOfCircles[5], pListOfCircles[1]
-        pListOfCircles[2], pListOfCircles[3] = pListOfCircles[3], pListOfCircles[2]
+    def cmp(self, pCoord1, pCoord2):
+        marker1 = None
+        marker2 = None
+        if pCoord1[0] >= pCoord2[0] and pCoord1[1] <= pCoord2[1]:
+            marker1 = pCoord1
+            marker2 = pCoord2
+        else:
+            marker1 = pCoord2
+            marker2 = pCoord1
+        return marker1, marker2
 
+    # utriedenie najdenych kruhov
+    def sortCircles(self, pListOfCircles, pTypeOfImage):
+        markersOrder = []
+        auxList = sorted(pListOfCircles, key=itemgetter(1), reverse=True)
+        print("Sorted list:")
+        print(auxList)
+        if pTypeOfImage == 1:
+            markersOrder.append(auxList[3])
+            marker2, marker1 = self.cmp(auxList[1], auxList[2])
+            markersOrder.append(marker1)
+            marker2, marker5 = self.cmp(auxList[5], marker2)
+            markersOrder.append(marker2)
+            markersOrder.append(auxList[6])
+            markersOrder.append(auxList[4])
+            markersOrder.append(marker5)
+            markersOrder.append(auxList[0])
+
+        else:
+            markersOrder.append(auxList[3])
+            marker2, marker1 = self.cmp(auxList[1], auxList[2])
+            markersOrder.append(marker1)
+            marker2, marker5 = self.cmp(auxList[5], marker2)
+            markersOrder.append(marker2)
+            markersOrder.append(auxList[6])
+            markersOrder.append(auxList[4])
+            markersOrder.append(marker5)
+            markersOrder.append(auxList[0])
+
+        return markersOrder
+
+    # najdenie kruhov a vypocitanie vzdialenosti medzi nimi
     def findAllCircles(self, pWasSuccess):
         listOfCircles = []
 
@@ -79,28 +124,36 @@ class CircleDetectorWithoutCV:
         listOfRadii = []
 
         if listOfCircles:
+            print("Num of circles: ", numOfCircles)
             if numOfCircles == self.numOfExpectedCircles:
-                self.sortCircles(listOfCircles)
+                listOfCircles = self.sortCircles(listOfCircles, self.typeOfImage)
 
             if numOfCircles < self.numOfExpectedCircles:
                 print(Fore.RED + "\nNebol detegovany pozadovany pocet kruhov!")
                 print(Fore.YELLOW + "Skuste zmenit interval medzi najmensim a najvacsim hladanym polomerom.")
                 print(Style.RESET_ALL)
 
-                return 0, self.image
+                return 0, self.filename
             else:
                 i = 0
+                print("List of circles:")
+                print(listOfCircles)
                 for x, y, r in listOfCircles:
-                    i += 1
                     self.drawResult.ellipse((x - r, y - r, x + r, y + r), outline=(255, 0, 0, 0))
                     self.drawResult.text((x, y), "{:d}.".format(i), (0, 0, 0))
                     listOfCoordsX.append(x)
                     listOfCoordsY.append(y)
                     listOfRadii.append(r)
+                    i += 1
 
                 self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.drawResult, 2)
 
-                nameOfImage = "result.png"
+                nameOfImage = ""
+                if self.typeOfImage == 1:
+                    nameOfImage = "output_images/detectedCirclesOriginal_withoutOpenCV.jpg"
+                elif self.typeOfImage == 2:
+                    nameOfImage = "output_images/detectedCirclesTransformed_withoutOpenCV.jpg"
+
                 self.outputImage.save(nameOfImage)
 
                 return 1, nameOfImage

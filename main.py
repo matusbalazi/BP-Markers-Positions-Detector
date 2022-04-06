@@ -93,9 +93,9 @@ def main():
             circleDetector = None
 
             if decision2 == "1":
-                circleDetector = circle_detector_with_cv.CircleDetectorWithCV(image, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
+                circleDetector = circle_detector_with_cv.CircleDetectorWithCV(image, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles), 1)
             elif decision2 == "2":
-                circleDetector = circle_detector_with_cv.CircleDetectorWithCV(newImage, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
+                circleDetector = circle_detector_with_cv.CircleDetectorWithCV(newImage, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles), 2)
 
             print("\n[1] Hough Circle Transform")
             print("[2] Hough Circle Transform + Harris Corner Detector")
@@ -103,7 +103,12 @@ def main():
             decision3 = input(Fore.MAGENTA + "Zvolte moznost: " + Style.RESET_ALL)
             print()
 
+            img = None
             if decision3 == "1":
+                if decision2 == "1":
+                    filename = "output_images/detectedCirclesOriginal_HCT.jpg"
+                else:
+                    filename = "output_images/detectedCirclesTransformed_HCT.jpg"
                 value, img = circleDetector.findAllCircles(1, 1)
                 if value == 1:
                     cv2.imshow("Image", img)
@@ -114,7 +119,12 @@ def main():
                         cv2.imshow("Image", img)
                     elif decision4 == "N":
                         cv2.imshow("Image", img)
+                cv2.imwrite(filename, img)
             elif decision3 == "2":
+                if decision2 == "1":
+                    filename = "output_images/detectedCirclesOriginal_HCT+HCD.jpg"
+                else:
+                    filename = "output_images/detectedCirclesTransformed_HCT+HCD.jpg"
                 value, img = circleDetector.findAllCircles(2, 1)
                 if value == 1:
                     cv2.imshow("Image", img)
@@ -125,6 +135,7 @@ def main():
                         cv2.imshow("Image", img)
                     elif decision4 == "N":
                         cv2.imshow("Image", img)
+                cv2.imwrite(filename, img)
 
             cv2.waitKey(0)
             cv2.destroyAllWindows()
@@ -133,6 +144,7 @@ def main():
             minRadius = 0
             maxRadius = 0
             objSize = 0
+            numOfExpectedCircles = 0
 
             print("\n[1] Original image")
             print("[2] Transformed Image")
@@ -151,9 +163,9 @@ def main():
             circleDetector = None
 
             if decision3 == "1":
-                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(image, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
+                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(image, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles), 1)
             elif decision3 == "2":
-                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(newImage, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles))
+                circleDetector = circle_detector_without_cv.CircleDetectorWithoutCV(newImage, int(minRadius), int(maxRadius), int(objSize), int(numOfExpectedCircles), 2)
 
             value, name = circleDetector.findAllCircles(1)
             if value == 1:
@@ -169,12 +181,15 @@ def main():
                     img = Image.open(name)
                     img.show()
 
+
         elif decision == "0":
             wasEnd = True
 
     file = open("result.txt", "r")
     listOfLines = file.readlines()
     file.close()
+
+    file = open("measures.txt", "w")
 
     i = 0
     listOfMeasures = []
@@ -183,12 +198,13 @@ def main():
             measure = float(line[9:])
             print("Item: ", measure)
             listOfMeasures.append(measure)
+            file.write(str(measure) + "\n")
         i += 1
+
+    file.close()
 
     print(listOfMeasures)
 
-    #del args
-    #exec(open("find_markers_positions.py").read())
     subprocess.call("./find_markers_positions.py", shell=True)
 
 if __name__ == "__main__":

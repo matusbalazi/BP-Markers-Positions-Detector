@@ -1,19 +1,26 @@
+from filecmp import cmp
+import numpy as np
 import distance_calculator
 import corner_detector
 from colorama import Fore, Style
+from operator import itemgetter
 import cv2
 
 class CircleDetectorWithCV:
-    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles):
+    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles, pTypeOfImage):
         self.image = cv2.imread(pImageFilename)
+        dimensions = self.image.shape
+        if (dimensions[1] > 1500):
+            self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.5)
         self.minRadius = pMinRadius
         self.maxRadius = pMaxRadius
         self.objSize = pObjSize
         self.numOfExpectedCircles = pNumOfExpectedCircles
+        self.typeOfImage = pTypeOfImage
         self.decision = "N"
         self.imageCopy = 0
         self.distance = distance_calculator.DistanceCalculator(self.objSize)
-        self.corners = corner_detector.CornerDetector(self.image)
+        self.corners = corner_detector.CornerDetector(self.image, self.numOfExpectedCircles, self.typeOfImage)
 
     def detectCircles(self, pImage, pMinRadius, pMaxRadius):
         self.imageCopy = pImage.copy()
@@ -29,8 +36,44 @@ class CircleDetectorWithCV:
                                    maxRadius=pMaxRadius)
         return circles
 
+    def cmp(self, pCoord1, pCoord2):
+        marker1 = None
+        marker2 = None
+        if pCoord1[0] >= pCoord2[0] and pCoord1[1] <= pCoord2[1]:
+            marker1 = pCoord1
+            marker2 = pCoord2
+        else:
+            marker1 = pCoord2
+            marker2 = pCoord1
+        return marker1, marker2
+
+    def sortCircles(self, pListOfCircles, pTypeOfImage):
+        markersOrder = []
+        auxList = sorted(pListOfCircles[0], key=itemgetter(1), reverse=True)
+        if pTypeOfImage == 1:
+            markersOrder.append(auxList[3])
+            marker1, marker2 = self.cmp(auxList[2], auxList[1])
+            markersOrder.append(marker1)
+            marker2, marker5 = self.cmp(auxList[5], marker2)
+            markersOrder.append(marker2)
+            markersOrder.append(auxList[6])
+            markersOrder.append(auxList[4])
+            markersOrder.append(marker5)
+            markersOrder.append(auxList[0])
+        else:
+            markersOrder.append(auxList[3])
+            markersOrder.append(auxList[1])
+            markersOrder.append(auxList[2])
+            markersOrder.append(auxList[5])
+            markersOrder.append(auxList[6])
+            markersOrder.append(auxList[4])
+            markersOrder.append(auxList[0])
+
+        sortedList = np.array(markersOrder)
+
+        return sortedList
+
     def findAllCircles(self, pOption, pWasSuccess):
-        #TODO: Dorobit, aby sa oba polomery menili v urcitom pomere a iba ak bude pouzivatel chciet
         #TODO: Ukladat kazdy obrazok do priecinku images
 
         listOfCircles = []
@@ -58,9 +101,17 @@ class CircleDetectorWithCV:
         listOfRadii = []
 
         if listOfCircles is not None:
-            for co, i in enumerate(listOfCircles[0, :], start=1):
+            aux = None
+            if int(sum(map(len, listOfCircles))) == self.numOfExpectedCircles:
+                sortedListOfCircles = self.sortCircles(listOfCircles, self.typeOfImage)
+                listOfCircles = sortedListOfCircles
+                aux = listOfCircles[:]
+            else:
+                aux = listOfCircles[0, :]
+
+            for co, i in enumerate(aux, start=1):
                 if pOption == 1:
-                    cv2.putText(self.imageCopy, "{:d}.".format(co), (int(i[0] + 20), int(i[1] + 20)),
+                    cv2.putText(self.imageCopy, "{:d}.".format(co - 1), (int(i[0] + 20), int(i[1] + 20)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
                     cv2.circle(self.imageCopy, (int(i[0]), int(i[1])), int(i[2]), (0, 255, 0), 2)
                     cv2.circle(self.imageCopy, (int(i[0]), int(i[1])), 2, (0, 0, 255), 3)
@@ -81,8 +132,9 @@ class CircleDetectorWithCV:
                     return 1, self.distance.findAllDistances(listOfCoordsX, listOfCoordsY, listOfRadii, self.imageCopy, 1)
             elif pOption == 2:
                 list1, list2 = self.corners.findMidpointsOfCircles(listOfCoordsX, listOfCoordsY, listOfRadii)
+                print(list1)
                 for i in range(len(list1)):
-                    cv2.putText(self.imageCopy, "{:d}.".format(i + 1), (int(list1[i] + 20), int(list2[i] + 20)),
+                    cv2.putText(self.imageCopy, "{:d}.".format(i), (int(list1[i] + 20), int(list2[i] + 20)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
                     cv2.circle(self.imageCopy, (int(list1[i]), int(list2[i])),
                                int(listOfRadii[i]), (0, 255, 0), 2)

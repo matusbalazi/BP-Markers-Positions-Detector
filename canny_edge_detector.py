@@ -1,10 +1,5 @@
 from math import sqrt, atan2, pi
-
-import matplotlib.pyplot as plt
 import numpy as np
-import cv2
-from PIL import Image, ImageDraw
-import matplotlib
 
 class CannyEdgeDetector:
     def __init__(self, pImage):
@@ -15,23 +10,19 @@ class CannyEdgeDetector:
         width = self.image.width
         height = self.image.height
 
-        # Transform the image to grayscale
         grayscaled = self.compute_grayscale(input_pixels, width, height)
 
-        # Blur it to remove noise
         blurred = self.compute_blur(grayscaled, width, height)
 
-        # Compute the gradient
         gradient, direction = self.compute_gradient(blurred, width, height)
 
-        # Non-maximum suppression
         self.filter_out_non_maximum(gradient, direction, width, height)
 
-        # Filter out some edges
         keep = self.filter_strong_edges(gradient, width, height, 20, 25)
 
         return keep
 
+    # transformacia obrazka do odtienov sivej
     def compute_grayscale(self, pInputPixels, pWidth, pHeight):
         grayscale = np.empty((pWidth, pHeight))
         for x in range(pWidth):
@@ -40,11 +31,12 @@ class CannyEdgeDetector:
                 grayscale[x, y] = (pixel[0] + pixel[1] + pixel[2]) / 3
         return grayscale
 
+    # redukcia sumu rozostrenim obrazka pomocou Gaussovho filtra
     def compute_blur(self, pInputPixels, pWidth, pHeight):
-        # Keep coordinate inside image
+        # ponechanie mierky povodneho obrazka
         clip = lambda x, l, u: l if x < l else u if x > u else x
 
-        # Gaussian kernel
+        # Gausovsky filter
         kernel = np.array([
             [1 / 256,  4 / 256,  6 / 256,  4 / 256, 1 / 256],
             [4 / 256, 16 / 256, 24 / 256, 16 / 256, 4 / 256],
@@ -53,10 +45,10 @@ class CannyEdgeDetector:
             [1 / 256,  4 / 256,  6 / 256,  4 / 256, 1 / 256]
         ])
 
-        # Middle of the kernel
+        # stred Gausovskeho filtra
         offset = len(kernel) // 2
 
-        # Compute the blurred image
+        # rozostrenie obrazka
         blurred = np.empty((pWidth, pHeight))
         for x in range(pWidth):
             for y in range(pHeight):
@@ -69,6 +61,7 @@ class CannyEdgeDetector:
                 blurred[x, y] = int(acc)
         return blurred
 
+    # vypocet gradientu a jeho smeru
     def compute_gradient(self, pInputPixels, pWidth, pHeight):
         gradient = np.zeros((pWidth, pHeight))
         direction = np.zeros((pWidth, pHeight))
@@ -81,6 +74,7 @@ class CannyEdgeDetector:
                     direction[x, y] = atan2(magy, magx)
         return gradient, direction
 
+    # metoda potlacenia pixelov s mensou hodnotou intenzity, ako maju pixely v smere gradientu
     def filter_out_non_maximum(self, pGradient, pDirection, pWidth, pHeight):
         for x in range(1, pWidth - 1):
             for y in range(1, pHeight - 1):
@@ -93,16 +87,17 @@ class CannyEdgeDetector:
                         or (rangle == 3 and (pGradient[x + 1, y - 1] > mag or pGradient[x - 1, y + 1] > mag))):
                     pGradient[x, y] = 0
 
-
+    # urcenie hran pomocou detekcie prahovych pixelov a transformaciiou slabych pixelov na silne
     def filter_strong_edges(self, pGradient, pWidth, pHeight, pLow, pHigh):
-        # Keep strong edges
+        # ponechanie silnych pixelov
         keep = set()
         for x in range(pWidth):
             for y in range(pHeight):
                 if pGradient[x, y] > pHigh:
                     keep.add((x, y))
 
-        # Keep weak edges next to a pixel to keep
+        # transformacia slabeho pixelu na silny, ale iba vtedy,
+        # ak sa v jeho najblizsom okoli nachadza aspon jeden silny pixel
         lastiter = keep
         while lastiter:
             newkeep = set()
@@ -114,13 +109,3 @@ class CannyEdgeDetector:
             lastiter = newkeep
 
         return list(keep)
-
-
-#if __name__ == "__main__":
-#    from PIL import Image, ImageDraw
-#    input_image = Image.open("../images/image13.png")
-#    output_image = Image.new("RGB", input_image.size)
-#    draw = ImageDraw.Draw(output_image)
-#    for x, y in canny_edge_detector(input_image):
-#        draw.point((x, y), (255, 255, 255))
-#    output_image.save("canny.png")
