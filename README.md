@@ -242,8 +242,8 @@ find stls of pins. They have different lengths and tolerances. Choose the one th
 
 <br><p align="justify">
   That was a quick look at Markers Positions Detector program. I hope it will help you. You can try another detection methods. 
-  They work very similarly. Also look at <a href="https://github.com/matusbalazi/markers_positions_detector/tree/master/input_images_examples">input_images_examples</a>
-  and <a href="https://github.com/matusbalazi/markers_positions_detector/tree/master/output_images">output_images</a> folders. There are decent
+  They work very similarly. Also look at <i><a href="https://github.com/matusbalazi/markers_positions_detector/tree/master/input_images_examples">input_images_examples</a></i>
+  and <i><a href="https://github.com/matusbalazi/markers_positions_detector/tree/master/output_images">output_images</a></i> folders. There are decent
   examples of input and output images.<br><br>
   If anyone is interested in UML Class Diagrams so here it is. See the comments in code for more detailed descriptions of the funtions.
 </p>
