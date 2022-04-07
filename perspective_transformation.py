@@ -4,7 +4,7 @@ import numpy as np
 
 class PerspectiveTransformation:
     # Initialization
-    def __init__(self, pImageFilename, pWidth, pHeight, pPoints):
+    def __init__(self, pImageFilename: str, pWidth: int, pHeight: int, pPoints: np.ndarray):
         self.image = cv2.imread(pImageFilename)
         self.width = pWidth
         self.height = pHeight
@@ -37,7 +37,7 @@ class PerspectiveTransformation:
         cv2.waitKey(0)
 
     # Calculates and applies a perspective transformation to an image
-    def doTransformation(self):
+    def doTransformation(self) -> np.ndarray:
         # The coordinates of the points in the original image to be transformed
         pts1 = np.float32(self.points)
 

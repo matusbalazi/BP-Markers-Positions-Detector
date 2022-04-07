@@ -4,7 +4,7 @@ import numpy as np
 
 class CornerDetector:
     # Initialization
-    def __init__(self, pImage, pNumOfExpectedCircles, pTypeOfImage):
+    def __init__(self, pImage: np.ndarray, pNumOfExpectedCircles: int, pTypeOfImage: int):
         self.image = pImage
         self.numOfExpectedCircles = pNumOfExpectedCircles
         self.typeOfImage = pTypeOfImage
@@ -12,7 +12,7 @@ class CornerDetector:
 
     # Uses Harris Corner Detection method used to
     # detect all the corners in the image
-    def detectCorners(self):
+    def detectCorners(self) -> np.ndarray:
         self.imageCopy = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         self.imageCopy = np.float32(self.imageCopy)
         dst = cv2.cornerHarris(self.imageCopy, 5, 3, 0.04)
@@ -21,10 +21,11 @@ class CornerDetector:
         ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
         corners = cv2.cornerSubPix(self.imageCopy, np.float32(centroids), (5, 5), (-1, -1), criteria)
+
         return corners
 
     # Sorting algorithm used to sort midpoints of circles according to their coordinates
-    def bubbleSort(self, pList1, pList2):
+    def bubbleSort(self, pList1: list, pList2: list):
         for i in range(0, len(pList2) - 1):
             for j in range(len(pList2) - 1):
                 if (pList2[j] > pList2[j + 1]):
@@ -40,7 +41,7 @@ class CornerDetector:
         pList2.reverse()
 
     # Sorts midpoints of circles according to anchor positions (anchors A, B and C)
-    def sortMidpoints(self, pListOfMidpointsX, pListOfMidpointsY, pTypeOfImage):
+    def sortMidpoints(self, pListOfMidpointsX: list, pListOfMidpointsY: list, pTypeOfImage: int) -> (list, list):
         listX = []
         listY = []
         if pTypeOfImage == 1:
@@ -80,7 +81,7 @@ class CornerDetector:
 
     # Modified Hough Circle Transform based on Harris corner detection method
     # defines new midpoints of circles in the image
-    def findMidpointsOfCircles(self, pListOfCoordsX, pListOfCoordsY, pListOfRadii):
+    def findMidpointsOfCircles(self, pListOfCoordsX: list, pListOfCoordsY: list, pListOfRadii: list) -> (list, list):
         corners = self.detectCorners()
         listOfCorners = []
         listOfCornersX = []

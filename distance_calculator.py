@@ -1,29 +1,30 @@
 import cv2
 import math
 import random
+import numpy as np
 
 
 class DistanceCalculator:
     # Initialization
-    def __init__(self, pObjSize):
+    def __init__(self, pObjSize: int):
         self.objSize = pObjSize
         self.averageDiameter = 0
 
     # Calculation of the average circle diameter
-    def setAverageDiameter(self, pRadii):
+    def setAverageDiameter(self, pRadii: list):
         for x in range(len(pRadii)):
             self.averageDiameter = self.averageDiameter + 2 * pRadii[x]
 
         self.averageDiameter = self.averageDiameter / len(pRadii)
 
     # Returns average circle diameter
-    def getAverageDiameter(self):
+    def getAverageDiameter(self) -> float:
         return self.averageDiameter
 
     # Calculation of the distance between the centers of two circles
     # based on the Euclidean distance and the size ratio of the actual
     # circle (in mm) and the detected circle (in px)
-    def calculateDistance(self, pPointA, pPointB):
+    def calculateDistance(self, pPointA: tuple, pPointB: tuple) -> float:
         x1, y1 = pPointA
         x2, y2 = pPointB
 
@@ -51,12 +52,13 @@ class DistanceCalculator:
         return math.sqrt(((width * sizeOfOnePixel) ** 2) + ((height * sizeOfOnePixel) ** 2))
 
     # Find the center of the circle
-    def midPoint(self, pPointA, pPointB):
+    def midPoint(self, pPointA: tuple, pPointB: tuple) -> tuple:
         return ((pPointA[0] + pPointB[0]) * 0.5, (pPointA[1] + pPointB[1]) * 0.5)
 
     # Determine the distance between the centers of all detected circles,
     # write these distances to a file and draw in an image
-    def findAllDistances(self, pCoordsX, pCoordsY, pRadii, pImage, pOption):
+    def findAllDistances(self, pCoordsX: list, pCoordsY: list, pRadii: list, pImage: np.ndarray,
+                         pOption: int) -> np.ndarray:
         self.setAverageDiameter(pRadii)
         i = 0
         j = 0

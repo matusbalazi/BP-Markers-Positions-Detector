@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 import distance_calculator
 import corner_detector
@@ -8,7 +9,8 @@ import cv2
 
 class CircleDetectorWithCV:
     # Initialization
-    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles, pTypeOfImage):
+    def __init__(self, pImageFilename: str, pMinRadius: int, pMaxRadius: int, pObjSize: int, pNumOfExpectedCircles: int,
+                 pTypeOfImage: int):
         self.image = cv2.imread(pImageFilename)
         self.minRadius = pMinRadius
         self.maxRadius = pMaxRadius
@@ -28,7 +30,7 @@ class CircleDetectorWithCV:
 
     # Uses the Hough Circle Transform
     # to detect circles in the image
-    def detectCircles(self, pImage, pMinRadius, pMaxRadius):
+    def detectCircles(self, pImage: np.ndarray, pMinRadius: int, pMaxRadius: int) -> np.ndarray:
         self.imageCopy = pImage.copy()
         pImage = cv2.cvtColor(pImage, cv2.COLOR_BGR2RGB)
         pImage = cv2.cvtColor(pImage, cv2.COLOR_BGR2GRAY)
@@ -42,10 +44,11 @@ class CircleDetectorWithCV:
         circles = cv2.HoughCircles(image=edgedImage, method=cv2.HOUGH_GRADIENT, dp=1,
                                    minDist=50, param1=100, param2=30, minRadius=pMinRadius,
                                    maxRadius=pMaxRadius)
+
         return circles
 
     # Compares coordinates of two detected circles
-    def cmp(self, pCoord1, pCoord2):
+    def cmp(self, pCoord1: np.ndarray, pCoord2: np.ndarray) -> (np.ndarray, np.ndarray):
         marker1 = None
         marker2 = None
         if pCoord1[0] >= pCoord2[0] and pCoord1[1] <= pCoord2[1]:
@@ -54,11 +57,12 @@ class CircleDetectorWithCV:
         else:
             marker1 = pCoord2
             marker2 = pCoord1
+
         return marker1, marker2
 
     # Sorts circles according to anchor positions
     # (anchors A, B and C) in the image
-    def sortCircles(self, pListOfCircles, pTypeOfImage):
+    def sortCircles(self, pListOfCircles: np.ndarray, pTypeOfImage: int) -> np.ndarray:
         markersOrder = []
         auxList = sorted(pListOfCircles[0], key=itemgetter(1), reverse=True)
         if pTypeOfImage == 1:
@@ -87,7 +91,7 @@ class CircleDetectorWithCV:
     # Finds circles in the image according to input parameters
     # using Hough Circle Transform method and calculates
     # distances between their midpoints
-    def findAllCircles(self, pOption, pWasSuccess):
+    def findAllCircles(self, pOption: int, pWasSuccess: int) -> (int, np.ndarray):
         listOfCircles = []
 
         # If the previous detection was not complete or reliable

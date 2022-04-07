@@ -1,15 +1,17 @@
 from math import sqrt, atan2, pi
+
+import PIL.Image
 import numpy as np
 
 
 class CannyEdgeDetector:
     # Initialization
-    def __init__(self, pImage):
+    def __init__(self, pImage: PIL.Image):
         self.image = pImage
 
     # Canny Edge Detector algorithm cleans the image
     # and only keeps the strongest edges
-    def applyCannyEdgeDetector(self):
+    def applyCannyEdgeDetector(self) -> list:
         inputPixels = self.image.load()
         width = self.image.width
         height = self.image.height
@@ -32,17 +34,18 @@ class CannyEdgeDetector:
         return keepEdges
 
     # Transforms the image to grayscale
-    def convertImageToGrayscale(self, pInputPixels, pWidth, pHeight):
+    def convertImageToGrayscale(self, pInputPixels, pWidth: int, pHeight: int) -> np.ndarray:
         grayscale = np.empty((pWidth, pHeight))
         for x in range(pWidth):
             for y in range(pHeight):
                 pixel = pInputPixels[x, y]
                 grayscale[x, y] = (pixel[0] + pixel[1] + pixel[2]) / 3
+
         return grayscale
 
     # Reduces noise by blurring and smoothing
     # the image using a Gaussian filter
-    def blurImage(self, pInputPixels, pWidth, pHeight):
+    def blurImage(self, pInputPixels: np.ndarray, pWidth: int, pHeight: int) -> np.ndarray:
 
         # Keeps coordinates inside the image
         clip = lambda x, l, u: l if x < l else u if x > u else x
@@ -70,10 +73,11 @@ class CannyEdgeDetector:
                         yn = clip(y + b - offset, 0, pHeight - 1)
                         acc += pInputPixels[xn, yn] * kernel[a, b]
                 blurred[x, y] = int(acc)
+
         return blurred
 
     # Calculates image gradient and its direction to identify the edges
-    def calculateGradient(self, pInputPixels, pWidth, pHeight):
+    def calculateGradient(self, pInputPixels: np.ndarray, pWidth: int, pHeight: int) -> (np.ndarray, np.ndarray):
         gradient = np.zeros((pWidth, pHeight))
         direction = np.zeros((pWidth, pHeight))
         for x in range(pWidth):
@@ -83,12 +87,13 @@ class CannyEdgeDetector:
                     magy = pInputPixels[x, y + 1] - pInputPixels[x, y - 1]
                     gradient[x, y] = sqrt(magx ** 2 + magy ** 2)
                     direction[x, y] = atan2(magy, magx)
+
         return gradient, direction
 
     # Keeps only the pixels that have the maximum intensity among
     # their neighbors in the direction of gradient, as a result
     # are thinner and more accurate edges
-    def nonMaximumSuppression(self, pGradient, pDirection, pWidth, pHeight):
+    def nonMaximumSuppression(self, pGradient: np.ndarray, pDirection: np.ndarray, pWidth: int, pHeight: int):
         for x in range(1, pWidth - 1):
             for y in range(1, pHeight - 1):
                 angle = pDirection[x, y] if pDirection[x, y] >= 0 else pDirection[x, y] + pi
@@ -103,7 +108,8 @@ class CannyEdgeDetector:
     # Edge determination by threshold pixel detection,
     # strong pixels are retained and some weak pixels
     # are transformed into strong ones
-    def applyThresholdToFilterEdges(self, pGradient, pWidth, pHeight, pLow, pHigh):
+    def applyThresholdToFilterEdges(self, pGradient: np.ndarray, pWidth: int, pHeight: int, pLow: int,
+                                    pHigh: int) -> list:
 
         # Keeping strong pixels
         keep = set()

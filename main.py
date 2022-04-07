@@ -61,7 +61,7 @@ def main():
 
             points = np.array(eval(coords), dtype="float32")
 
-            perspective = perspective_transformation.PerspectiveTransformation(image, width, height, points)
+            perspective = perspective_transformation.PerspectiveTransformation(image, int(width), int(height), points)
             transformedImage = perspective.doTransformation()
             cv2.imshow("Transformed Image", transformedImage)
             cv2.waitKey(2000)
@@ -80,7 +80,7 @@ def main():
             print("\n[1] Original image")
             print("[2] Transformed Image")
             print()
-            decision2 = input(Fore.MAGENTA + "Choose an option: " + Style.RESET_ALL)
+            decision2 = input(Fore.MAGENTA + "Choose an image: " + Style.RESET_ALL)
             print()
 
             if len(sys.argv) > 9:
@@ -108,7 +108,7 @@ def main():
             print("\n[1] Hough Circle Transform")
             print("[2] Hough Circle Transform + Harris Corner Detector")
             print()
-            decision3 = input(Fore.MAGENTA + "Choose an option: " + Style.RESET_ALL)
+            decision3 = input(Fore.MAGENTA + "Choose a method: " + Style.RESET_ALL)
             print()
 
             img = None
@@ -159,7 +159,7 @@ def main():
             print("\n[1] Original image")
             print("[2] Transformed Image")
             print()
-            decision3 = input(Fore.MAGENTA + "Choose an option: " + Style.RESET_ALL)
+            decision3 = input(Fore.MAGENTA + "Choose an image: " + Style.RESET_ALL)
             print()
 
             if len(sys.argv) > 9:
@@ -172,6 +172,9 @@ def main():
                 objSize = input(Fore.MAGENTA + "Enter circle diameter in reality (in milimeters): " + Style.RESET_ALL)
                 numOfExpectedCircles = input(
                     Fore.MAGENTA + "Enter how many circles should be detected in the image: " + Style.RESET_ALL)
+
+            print()
+            print("Processing...")
 
             circleDetector = None
 
@@ -203,27 +206,32 @@ def main():
         elif decision == "0":
             wasEnd = True
 
-    # Extracts the necessary measurements in the correct format to a file
-    file = open("result.txt", "r")
-    listOfLines = file.readlines()
-    file.close()
+    try:
 
-    file = open("measures.txt", "w")
+        # Extracts the necessary measurements in the correct format to a file
+        file = open("result.txt", "r")
+        listOfLines = file.readlines()
+        file.close()
 
-    i = 0
-    listOfMeasures = []
-    for line in listOfLines:
-        if i < len(listOfLines) - 1:
-            measure = float(line[9:])
-            listOfMeasures.append(measure)
-            file.write(str(measure) + "\n")
-        i += 1
+        file = open("measures.txt", "w")
 
-    file.close()
+        i = 0
+        listOfMeasures = []
+        for line in listOfLines:
+            if i < len(listOfLines) - 1:
+                measure = float(line[9:])
+                listOfMeasures.append(measure)
+                file.write(str(measure) + "\n")
+            i += 1
 
-    # Executes an external program, which will find XYZ
-    # positions of markers placed on the effector
-    subprocess.call("./find_markers_positions.py", shell=True)
+        file.close()
+
+        # Executes an external program, which will find XYZ
+        # positions of markers placed on the effector
+        subprocess.call("./find_markers_positions.py", shell=True)
+
+    except:
+        print(Fore.RED + "No detection has been performed yet!" + Style.RESET_ALL)
 
 
 if __name__ == "__main__":

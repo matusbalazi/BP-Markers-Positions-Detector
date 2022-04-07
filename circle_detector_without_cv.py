@@ -9,7 +9,7 @@ from operator import itemgetter
 
 class CircleDetectorWithoutCV:
     # Initialization
-    def __init__(self, pImageFilename, pMinRadius, pMaxRadius, pObjSize, pNumOfExpectedCircles, pTypeOfImage):
+    def __init__(self, pImageFilename: str, pMinRadius: int, pMaxRadius: int, pObjSize: int, pNumOfExpectedCircles: int, pTypeOfImage: int):
         self.image = Image.open(pImageFilename)
         self.filename = pImageFilename
         self.minRadius = pMinRadius
@@ -36,7 +36,7 @@ class CircleDetectorWithoutCV:
     # radius, where the threshold represents the threshold value
     # from which we can consider the circle as trustworthy and
     # meet the specified criteria
-    def detectCircles(self, pMinRadius, pMaxRadius, pThreshold):
+    def detectCircles(self, pMinRadius: int, pMaxRadius: int, pThreshold: float) -> list:
         points = []
         for r in range(pMinRadius, pMaxRadius + 1):
             for t in range(self.steps):
@@ -59,10 +59,11 @@ class CircleDetectorWithoutCV:
                 circles.append((x, y, r))
 
         print(circles)
+
         return circles
 
     # Compares coordinates of two detected circles
-    def cmp(self, pCoord1, pCoord2):
+    def cmp(self, pCoord1: tuple, pCoord2: tuple) -> (tuple, tuple):
         marker1 = None
         marker2 = None
         if pCoord1[0] >= pCoord2[0] and pCoord1[1] <= pCoord2[1]:
@@ -71,15 +72,14 @@ class CircleDetectorWithoutCV:
         else:
             marker1 = pCoord2
             marker2 = pCoord1
+
         return marker1, marker2
 
     # Sorts circles according to anchor positions
     # (anchors A, B and C) in the image
-    def sortCircles(self, pListOfCircles, pTypeOfImage):
+    def sortCircles(self, pListOfCircles: list, pTypeOfImage: int) -> list:
         markersOrder = []
         auxList = sorted(pListOfCircles, key=itemgetter(1), reverse=True)
-        print("Sorted list:")
-        print(auxList)
         if pTypeOfImage == 1:
             markersOrder.append(auxList[3])
             marker2, marker1 = self.cmp(auxList[1], auxList[2])
@@ -107,7 +107,7 @@ class CircleDetectorWithoutCV:
     # Finds circles in the image according to input parameters
     # using Hough Circle Transform method and calculates
     # distances between their midpoints
-    def findAllCircles(self, pWasSuccess):
+    def findAllCircles(self, pWasSuccess: int) -> (int, str):
         listOfCircles = []
 
         # If the previous detection was not complete or reliable
