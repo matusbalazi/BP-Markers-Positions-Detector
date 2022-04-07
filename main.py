@@ -35,7 +35,7 @@ def main():
         print("[1] Perspective transformation")
         print("[2] Circle detector w/distance calculator (OpenCV)")
         print("[3] Circle detector w/distance calculator")
-        print("[0] Exit detection and start analyzing data")
+        print("[0] End detection and start analyzing data")
         print()
         decision = input(Fore.MAGENTA + "Choose an option: " + Style.RESET_ALL)
         print()
