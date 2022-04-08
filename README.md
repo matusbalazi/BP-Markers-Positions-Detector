@@ -88,7 +88,7 @@ python3 ./main.py
 
 <p align="justify">
   There is a bunch of arguments you can add to speed up later process:
-<ol>
+<ol align="justify">
   <li><i>-i</i> or <i>--image</i> means path to the input image</li>
   <li><i>-wi</i> or <i>--width</i> means width of the output image</li>
   <li><i>-he</i> or <i>--height</i> means height of the output image</li>
@@ -129,16 +129,38 @@ raspistill --quality 100 --timeout 300 --shutter 100000 --ISO 50 --width 3280 --
   <li><i>0</i> - nozzle</li>
   <li><i>1-6</i> - markers numbered from 0 to 5</li>
 </ul>
+</p>
+
+<p align="justify">
 To detect nozzle position I pushed the pin to coupling on the extruder and screwed (or you can glue it) reflective disc to this pin.
 In the <i><a href="https://github.com/matusbalazi/markers_positions_detector/tree/master/stl">stl</a></i> folder of this repo you will
-find stls of pins. They have different lengths and tolerances. Choose the one that suits you best.<br><br><br>
+find stls of pins. They have different lengths and tolerances. Choose the one that suits you best.<br>
+</p>
+
+<p align="justify">
+Markers Positions Detector detects markers (probably you have reflective discs, but any circular shape will work) and calculates 21 distances between them in the following order:
+</p>
+
+<p align="justify">
+<ul>
+  <li>0->1, 0->2, 0->3, 0->4, 0->5, 0->6,</li>
+  <li>1->2, 1->3, 1->4, 1->5, 1->6,</li>
+  <li>2->3, 2->4, 2->5, 2->6,</li>
+  <li>3->4, 3->5, 3->6,</li>
+  <li>4->5, 4->6,</li>
+  <li>5->6.</li>
+</ul>
+</p>
+
+<p align="justify">
+If you have everything ready, let's run the application.<br><br><br>
 </p>
 
 ## User Guide
 <p align="justify">
   I'll show you only some basic steps to use. The application gives you enough help while using it. This is only CLI application.
   In the main menu you will find 4 options to choose from:
-  <ol>
+  <ol align="justify">
   <li><i>Perspective transformation</i></li>
     <ul>If the angle at which you took the photo is too large it is sometimes beneficial to transform the image to "bird's-eye view".</ul><br>
   <li><i>Circle detector w/distance calculator (OpenCV)</i></li>
@@ -188,8 +210,8 @@ find stls of pins. They have different lengths and tolerances. Choose the one th
 </p><br>
   
 <p align="justify">
-  All circles were detected, distances between them were calculated and written to text file, output image was saved.
-  Output image is little bit messy but later check the text file <i>result.txt</i>. To continue hit the <i>Enter</i> to close the image.
+  All circles were detected, distances between them were calculated and written to text file, output image was saved. Check the order of detected circles. It must match the correct order as was shown in the <i>Preparations</i> part.
+Output image is little bit messy but later take a look in the text file <i>result.txt</i>. There are written calculated distances. To continue hit the <i>Enter</i> to close the image.
 </p>
 
 <p align="center">
