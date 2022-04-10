@@ -15,7 +15,8 @@ class DistanceCalculator:
         for x in range(len(pRadii)):
             self.averageDiameter = self.averageDiameter + 2 * pRadii[x]
 
-        self.averageDiameter = self.averageDiameter / len(pRadii)
+        self.averageDiameter = self.averageDiameter - 2 * max(pRadii)
+        self.averageDiameter = self.averageDiameter / (len(pRadii) - 1)
 
     # Returns average circle diameter
     def getAverageDiameter(self) -> float:

@@ -14,7 +14,7 @@ class PerspectiveTransformation:
         originalDimensions = self.image.shape
 
         # Resize input image if the image is too big
-        if (originalDimensions[1] > 1500):
+        if (originalDimensions[1] > 2000):
             self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.5)
             self.dimensions = self.image.shape
             self.wasResize = True

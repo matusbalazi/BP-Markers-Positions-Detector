@@ -22,7 +22,7 @@ class CircleDetectorWithCV:
 
         # Resize input image if the image is too big
         if (dimensions[1] > 1500):
-            self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.5)
+            self.image = cv2.resize(self.image, (0, 0), fx=0.5, fy=0.55)
 
         self.imageCopy = 0
         self.distance = distance_calculator.DistanceCalculator(self.objSize)
@@ -76,12 +76,19 @@ class CircleDetectorWithCV:
             markersOrder.append(marker5)
             markersOrder.append(auxList[0])
         else:
+            #marker0, marker5 = self.cmp(auxList[3], auxList[4])
+            #markersOrder.append(marker5)
+
             markersOrder.append(auxList[3])
+
             markersOrder.append(auxList[1])
             markersOrder.append(auxList[2])
             markersOrder.append(auxList[5])
             markersOrder.append(auxList[6])
+            #markersOrder.append(marker0)
+
             markersOrder.append(auxList[4])
+
             markersOrder.append(auxList[0])
 
         sortedList = np.array(markersOrder)
