@@ -31,7 +31,7 @@ python3 --version
 </p>
 
 ```
-git clone https://github.com/matusbalazi/markers_positions_detector
+git clone https://github.com/matusbalazi/BP-Markers-Positions-Detector
 ```
 
 <p align="justify">
